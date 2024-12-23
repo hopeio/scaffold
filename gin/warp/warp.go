@@ -2,8 +2,8 @@ package warp
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/hopeio/context/ginctx"
-	"github.com/hopeio/protobuf/errcode"
+	"github.com/hopeio/context/httpctx"
+	"github.com/hopeio/utils/errors/errcode"
 	httpi "github.com/hopeio/utils/net/http"
 	"github.com/hopeio/utils/net/http/gin/binding"
 	"github.com/hopeio/utils/types"
@@ -18,9 +18,13 @@ func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcServiceMethod[*RE
 			ctx.JSON(http.StatusOK, errcode.InvalidArgument.Wrap(err))
 			return
 		}
-		ctxi := ginctx.FromRequest(ctx)
+		ctxi := httpctx.FromRequest(httpctx.RequestCtx{Request: ctx.Request, Response: ctx.Writer})
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
+			if errcode, ok := err.(errcode.ErrCode); ok {
+				httpi.RespErrcode(ctx.Writer, errcode)
+				return
+			}
 			ctx.JSON(http.StatusOK, reserr)
 			return
 		}
