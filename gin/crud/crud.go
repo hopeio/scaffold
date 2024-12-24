@@ -46,3 +46,29 @@ func CRUD[T any](server *gin.Engine, db *gorm.DB) {
 		c.JSON(http.StatusOK, httpi.ResponseOk)
 	})
 }
+
+func Delete[T any](server *gin.Engine, db *gorm.DB) {
+	var v T
+	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
+	server.DELETE("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
+			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, httpi.ResponseOk)
+	})
+}
+
+func Query[T any](server *gin.Engine, db *gorm.DB) {
+	var v T
+	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
+	server.GET("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+		var data T
+		if err := db.First(&data, c.Param("id")).Error; err != nil {
+			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, httpi.NewSuccessResData(data))
+	})
+
+}
