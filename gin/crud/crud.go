@@ -12,18 +12,18 @@ import (
 	"reflect"
 )
 
-func CRUD[T any](server *gin.Engine, db *gorm.DB) {
+func CRUD[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	server.GET("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+	server.GET("/api/v1/"+typ+"/:id", append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpi.NewSuccessResData(data))
-	})
-	cu := func(c *gin.Context) {
+	})...)
+	cu := append(middleware, func(c *gin.Context) {
 		var data T
 		err := binding.Bind(c, &data)
 		if err != nil {
@@ -35,40 +35,40 @@ func CRUD[T any](server *gin.Engine, db *gorm.DB) {
 			return
 		}
 		c.JSON(http.StatusOK, httpi.ResponseOk)
-	}
-	server.POST("/api/v1/"+typ, cu)
-	server.PUT("/api/v1/"+typ, cu)
-	server.DELETE("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+	})
+	server.POST("/api/v1/"+typ, cu...)
+	server.PUT("/api/v1/"+typ, cu...)
+	server.DELETE("/api/v1/"+typ+"/:id", append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpi.ResponseOk)
-	})
+	})...)
 }
 
-func Delete[T any](server *gin.Engine, db *gorm.DB) {
+func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	server.DELETE("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+	server.DELETE("/api/v1/"+typ+"/:id", append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpi.ResponseOk)
-	})
+	})...)
 }
 
-func Query[T any](server *gin.Engine, db *gorm.DB) {
+func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	server.GET("/api/v1/"+typ+"/:id", func(c *gin.Context) {
+	server.GET("/api/v1/"+typ+"/:id", append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpi.NewSuccessResData(data))
-	})
+	})...)
 
 }
