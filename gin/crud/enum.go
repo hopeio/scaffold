@@ -7,6 +7,6 @@ import (
 )
 
 func Enum(server *gin.Engine, db *gorm.DB) {
-	CRUD[model.Enum](server, db)
-	CRUD[model.EnumValue](server, db)
+	CRUD[model.Enum](server, db, "id")
+	CRUD[model.EnumValue](server, db, "id")
 }
