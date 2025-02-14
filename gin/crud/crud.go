@@ -2,7 +2,8 @@ package crud
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/hopeio/protobuf/errcode"
+	"github.com/hopeio/scaffold/errcode"
+
 	clausei "github.com/hopeio/utils/dao/database/gorm/clause"
 	errcode2 "github.com/hopeio/utils/errors/errcode"
 	httpi "github.com/hopeio/utils/net/http"
