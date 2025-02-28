@@ -17,12 +17,12 @@ func (x ErrCode) Code() int {
 }
 
 func (x ErrCode) ErrRep() *errcode.ErrRep {
-	return &errcode.ErrRep{Code: errcode.ErrCode(x), Msg: x.String()}
+	return &errcode.ErrRep{Code: errcode.ErrCode(x), Msg: x.Text()}
 }
 
 // example 实现
 func (x ErrCode) GRPCStatus() *status.Status {
-	return status.New(codes.Code(x), x.String())
+	return status.New(codes.Code(x), x.Text())
 }
 
 func (x ErrCode) Msg(msg string) *errcode.ErrRep {
@@ -34,10 +34,10 @@ func (x ErrCode) Wrap(err error) *errcode.ErrRep {
 }
 
 func (x ErrCode) Error() string {
-	return x.String()
+	return x.Text()
 }
 
-func (x ErrCode) Origin() errcode.ErrCode {
+func (x ErrCode) ErrCode() errcode.ErrCode {
 	return errcode.ErrCode(x)
 }
 
