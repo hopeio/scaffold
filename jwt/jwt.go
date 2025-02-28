@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"encoding/json"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hopeio/context/reqctx"
 	stringsi "github.com/hopeio/utils/strings"
 	jwti "github.com/hopeio/utils/validation/auth/jwt"
@@ -13,14 +12,7 @@ type authorization[A reqctx.AuthInfo] struct {
 	AuthInfoRaw string `json:"-"`
 }
 
-type Authorization[A reqctx.AuthInfo] struct {
-	Auth A `json:"auth"`
-	jwt.RegisteredClaims
-}
-
-func (x *Authorization[A]) GenerateToken(secret []byte) (string, error) {
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, x).SignedString(secret)
-}
+type Authorization[A reqctx.AuthInfo] = jwti.Claims[A]
 
 func (x *authorization[A]) UnmarshalJSON(data []byte) error {
 	x.AuthInfoRaw = stringsi.BytesToString(data)
@@ -32,7 +24,7 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 	if err != nil {
 		return err
 	}
-	x.ID = x.Auth.IdStr()
+	x.ID = x.Data.IdStr()
 	return nil
 }
 
@@ -41,7 +33,7 @@ func Auth[REQ reqctx.ReqCtx, A reqctx.AuthInfo](ctx *reqctx.Context[REQ], secret
 	if err := authorization.ParseToken(ctx.Token, secret); err != nil {
 		return nil, err
 	}
-	authInfo := authorization.Auth
+	authInfo := authorization.Data
 	ctx.AuthID = authorization.ID
 	ctx.AuthInfo = authInfo
 	ctx.AuthInfoRaw = authorization.AuthInfoRaw
