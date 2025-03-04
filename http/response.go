@@ -18,8 +18,8 @@ func (res *ExcelFile) StatusCode() int {
 	return http.StatusOK
 }
 
-func (res *ExcelFile) RespHeader() map[string]string {
-	return map[string]string{httpi.HeaderContentType: httpi.ContentTypeOctetStream, httpi.HeaderContentDisposition: fmt.Sprintf(httpi.AttachmentTmpl, res.Name)}
+func (res *ExcelFile) Header() httpi.Header {
+	return httpi.MapHeader{httpi.HeaderContentType: httpi.ContentTypeOctetStream, httpi.HeaderContentDisposition: fmt.Sprintf(httpi.AttachmentTmpl, res.Name)}
 }
 
 func (res *ExcelFile) WriteTo(writer io.Writer) (int64, error) {
