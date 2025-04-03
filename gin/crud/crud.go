@@ -109,7 +109,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpi.NewSuccessResData(data))
+		c.JSON(http.StatusOK, httpi.NewSuccessRespData(data))
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
@@ -141,7 +141,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		if count == 0 {
 			count = int64(len(list))
 		}
-		c.JSON(http.StatusOK, httpi.NewSuccessResData(&result.List[*T]{List: list, Total: uint(count)}))
+		c.JSON(http.StatusOK, httpi.NewSuccessRespData(&result.List[*T]{List: list, Total: uint(count)}))
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
