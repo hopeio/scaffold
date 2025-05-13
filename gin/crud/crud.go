@@ -18,6 +18,8 @@ import (
 	"reflect"
 )
 
+const apiPrefix = "/api/v1"
+
 func CRUD[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	Save[T](server, db, middleware...)
 	Query[T](server, db, middleware...)
@@ -40,16 +42,16 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		}
 		c.JSON(http.StatusOK, httpi.ResponseOk)
 	})
-	url := "/api/v1/" + typ
+	url := apiPrefix + typ
 	server.POST(url, cu...)
 	Log(http.MethodPost, url, "create "+typ)
-	url = "/api/v1/" + typ
+	url = apiPrefix + typ
 	server.PUT(url, cu...)
 	Log(http.MethodPut, url, "update "+typ)
-	url = "/api/v1/" + typ + "/edit"
+	url = apiPrefix + typ + "/edit"
 	server.POST(url, cu...)
 	Log(http.MethodPost, url, "update "+typ)
-	url = "/api/v1/" + typ + "/:id"
+	url = apiPrefix + typ + "/:id"
 	server.PUT(url, append(middleware, func(c *gin.Context) {
 		var data T
 		err := binding.Bind(c, &data)
@@ -69,7 +71,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	url := "/api/v1/" + typ + "/:id"
+	url := apiPrefix + typ + "/:id"
 	server.DELETE(url, append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
 			c.JSON(http.StatusOK, &errcode2.ErrRep{Code: errcode2.ErrCode(errcode.DBError), Msg: err.Error()})
@@ -91,10 +93,10 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 		}
 		c.JSON(http.StatusOK, httpi.ResponseOk)
 	})
-	url = "/api/v1/" + typ
+	url = apiPrefix + typ
 	server.DELETE(url, handler...)
 	Log(http.MethodDelete, url, "delete "+typ)
-	url = "/api/v1/" + typ + "/delete"
+	url = apiPrefix + typ + "/delete"
 	server.POST(url, handler...)
 	Log(http.MethodPost, url, "delete "+typ)
 }
@@ -102,7 +104,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	url := "/api/v1/" + typ + "/:id"
+	url := apiPrefix + typ + "/:id"
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
@@ -117,7 +119,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsi.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
-	url := "/api/v1/" + typ
+	url := apiPrefix + typ
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
 		var page param.PageEmbed
