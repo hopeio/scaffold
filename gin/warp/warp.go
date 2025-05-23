@@ -24,8 +24,8 @@ func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcServiceMethod[*RE
 			httpi.RespError(ctx.Writer, reserr)
 			return
 		}
-		if httpres, ok := any(res).(httpi.IHttpResponse); ok {
-			httpi.RespWrite(ctx.Writer, httpres)
+		if httpres, ok := any(res).(httpi.ICommonResponseTo); ok {
+			httpres.CommonResponse(httpi.CommonResponseWriter{ctx.Writer})
 			return
 		}
 		ctx.JSON(http.StatusOK, httpi.NewSuccessRespData(res))

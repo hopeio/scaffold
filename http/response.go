@@ -5,7 +5,6 @@ import (
 	httpi "github.com/hopeio/utils/net/http"
 	"github.com/hopeio/utils/net/http/consts"
 	"github.com/xuri/excelize/v2"
-	"io"
 	"net/http"
 )
 
@@ -15,18 +14,15 @@ type ExcelFile struct {
 	Options []excelize.Options
 }
 
-func (res *ExcelFile) StatusCode() int {
-	return http.StatusOK
+func (res *ExcelFile) Response(w http.ResponseWriter) (int, error) {
+	return res.CommonResponse(httpi.CommonResponseWriter{w})
 }
 
-func (res *ExcelFile) Header() httpi.Header {
-	return httpi.MapHeader{consts.HeaderContentType: consts.ContentTypeOctetStream, consts.HeaderContentDisposition: fmt.Sprintf(consts.AttachmentTmpl, res.Name)}
-}
-
-func (res *ExcelFile) WriteTo(writer io.Writer) (int64, error) {
-	return res.File.WriteTo(writer, res.Options...)
-}
-
-func (res *ExcelFile) Close() error {
-	return res.File.Close()
+func (res *ExcelFile) CommonResponse(w httpi.ICommonResponseWriter) (int, error) {
+	header := w.Header()
+	header.Set(consts.HeaderContentDisposition, fmt.Sprintf(consts.AttachmentTmpl, res.Name))
+	header.Set(consts.HeaderContentType, consts.ContentTypeOctetStream)
+	n, err := res.File.WriteTo(w, res.Options...)
+	res.File.Close()
+	return int(n), err
 }
