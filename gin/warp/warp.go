@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcServiceMethod[*REQ, *RES]) gin.HandlerFunc {
+func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := new(REQ)
 		err := binding.Bind(ctx, req)
