@@ -60,11 +60,3 @@ require (
 	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace (
-	github.com/hopeio/cherry => ../cherry
-	github.com/hopeio/context => ../context
-	github.com/hopeio/initialize => ../initialize
-	github.com/hopeio/protobuf => ../protobuf
-	github.com/hopeio/utils => ../utils
-)
