@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/scaffold/errcode"
 
-	clausei "github.com/hopeio/utils/dao/database/gorm/clause"
+	clausei "github.com/hopeio/utils/datax/database/gorm/clause"
 	errcode2 "github.com/hopeio/utils/errors/errcode"
 	httpi "github.com/hopeio/utils/net/http"
 	"github.com/hopeio/utils/net/http/gin/binding"
