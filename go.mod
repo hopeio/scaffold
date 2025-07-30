@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/hopeio/context v0.1.2
 	github.com/hopeio/protobuf v1.0.0
-	github.com/hopeio/utils v1.0.0
+	github.com/hopeio/gox v1.0.0
 	github.com/xuri/excelize/v2 v2.9.0
 	gorm.io/gorm v1.25.12
 )

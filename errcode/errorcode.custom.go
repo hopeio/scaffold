@@ -7,7 +7,7 @@
 package errcode
 
 import (
-	"github.com/hopeio/utils/errors/errcode"
+	"github.com/hopeio/gox/errors/errcode"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

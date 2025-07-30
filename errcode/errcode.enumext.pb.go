@@ -2,7 +2,7 @@ package errcode
 
 import (
 	errors "errors"
-	strings "github.com/hopeio/utils/strings"
+	strings "github.com/hopeio/gox/strings"
 	io "io"
 )
 

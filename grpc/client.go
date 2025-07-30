@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	httpi "github.com/hopeio/utils/net/http/consts"
+	httpi "github.com/hopeio/gox/net/http/consts"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
 )

@@ -2,8 +2,8 @@ package http
 
 import (
 	"fmt"
-	httpi "github.com/hopeio/utils/net/http"
-	"github.com/hopeio/utils/net/http/consts"
+	httpi "github.com/hopeio/gox/net/http"
+	"github.com/hopeio/gox/net/http/consts"
 	"github.com/xuri/excelize/v2"
 	"net/http"
 )

@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/loki-client-go/loki"
-	"github.com/hopeio/utils/log"
+	"github.com/hopeio/gox/log"
 	"github.com/prometheus/common/model"
 	"os"
 	"time"

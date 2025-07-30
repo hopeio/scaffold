@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/hopeio/context/reqctx"
-	stringsi "github.com/hopeio/utils/strings"
-	jwti "github.com/hopeio/utils/validation/auth/jwt"
+	stringsi "github.com/hopeio/gox/strings"
+	jwti "github.com/hopeio/gox/validation/auth/jwt"
 	"reflect"
 )
 
