@@ -42,7 +42,7 @@ func (x ErrCode) ErrCode() errcode.ErrCode {
 }
 
 /*func (x ErrCode) MarshalJSON() ([]byte, error) {
-	return stringsi.ToBytes(`{"code":` + strconv.Itoa(int(x)) + `,"message":"` + x.String() + `"}`), nil
+	return stringsx.ToBytes(`{"code":` + strconv.Itoa(int(x)) + `,"message":"` + x.String() + `"}`), nil
 }
 
 */

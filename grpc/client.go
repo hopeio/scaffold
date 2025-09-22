@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	httpi "github.com/hopeio/gox/net/http/consts"
+	httpx "github.com/hopeio/gox/net/http/consts"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
 )
@@ -27,5 +27,5 @@ func (c *InternalClientHandler) HandleRPC(ctx context.Context, rs stats.RPCStats
 
 // TagRPC implements per-RPC context management.
 func (c *InternalClientHandler) TagRPC(ctx context.Context, rti *stats.RPCTagInfo) context.Context {
-	return metadata.AppendToOutgoingContext(ctx, httpi.HeaderGrpcInternal, httpi.HeaderGrpcInternal)
+	return metadata.AppendToOutgoingContext(ctx, httpx.HeaderGrpcInternal, httpx.HeaderGrpcInternal)
 }

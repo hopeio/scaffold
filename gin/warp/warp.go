@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/context/httpctx"
 	"github.com/hopeio/gox/errors/errcode"
-	httpi "github.com/hopeio/gox/net/http"
+	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/gin/binding"
 	"github.com/hopeio/gox/types"
 	"net/http"
@@ -21,13 +21,13 @@ func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcService[*REQ, *RE
 		ctxi := httpctx.FromRequest(httpctx.RequestCtx{ctx.Request, ctx.Writer})
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
-			httpi.RespError(ctx.Writer, reserr)
+			httpx.RespError(ctx.Writer, reserr)
 			return
 		}
-		if httpres, ok := any(res).(httpi.ICommonResponseTo); ok {
-			httpres.CommonResponse(httpi.CommonResponseWriter{ctx.Writer})
+		if httpres, ok := any(res).(httpx.ICommonResponseTo); ok {
+			httpres.CommonResponse(httpx.CommonResponseWriter{ctx.Writer})
 			return
 		}
-		ctx.JSON(http.StatusOK, httpi.NewSuccessRespData(res))
+		ctx.JSON(http.StatusOK, httpx.NewSuccessRespData(res))
 	}
 }
