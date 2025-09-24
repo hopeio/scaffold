@@ -4,7 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/scaffold/errcode"
 
-	clausex "github.com/hopeio/gox/dataaccess/database/gorm/clause"
+	"log"
+	"net/http"
+	"reflect"
+
+	clausex "github.com/hopeio/gox/database/sql/gorm/clause"
 	errcodex "github.com/hopeio/gox/errors/errcode"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/gin/binding"
@@ -13,9 +17,6 @@ import (
 	"github.com/hopeio/gox/types/param"
 	"github.com/hopeio/gox/types/result"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"reflect"
 )
 
 const apiPrefix = "/api/v1"
