@@ -2,10 +2,10 @@ package http
 
 import (
 	"fmt"
-	httpx "github.com/hopeio/gox/net/http"
-	"github.com/hopeio/gox/net/http/consts"
-	"github.com/xuri/excelize/v2"
 	"net/http"
+
+	httpx "github.com/hopeio/gox/net/http"
+	"github.com/xuri/excelize/v2"
 )
 
 type ExcelFile struct {
@@ -20,8 +20,8 @@ func (res *ExcelFile) Response(w http.ResponseWriter) (int, error) {
 
 func (res *ExcelFile) CommonResponse(w httpx.ICommonResponseWriter) (int, error) {
 	header := w.Header()
-	header.Set(consts.HeaderContentDisposition, fmt.Sprintf(consts.AttachmentTmpl, res.Name))
-	header.Set(consts.HeaderContentType, consts.ContentTypeOctetStream)
+	header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
+	header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
 	n, err := res.File.WriteTo(w, res.Options...)
 	res.File.Close()
 	return int(n), err

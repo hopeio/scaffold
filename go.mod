@@ -4,9 +4,9 @@ go 1.23.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/hopeio/context v0.1.2
-	github.com/hopeio/gox v1.3.0
-	github.com/hopeio/protobuf v0.3.22
+	github.com/hopeio/context v0.4.0
+	github.com/hopeio/gox v1.3.1
+	github.com/hopeio/protobuf v0.5.0
 	github.com/xuri/excelize/v2 v2.9.1
 	gorm.io/gorm v1.31.0
 )

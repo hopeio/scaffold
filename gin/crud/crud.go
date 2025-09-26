@@ -2,6 +2,7 @@ package crud
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/hopeio/gox/errors"
 	"github.com/hopeio/scaffold/errcode"
 
 	"log"
@@ -9,7 +10,6 @@ import (
 	"reflect"
 
 	clausex "github.com/hopeio/gox/database/sql/gorm/clause"
-	errcodex "github.com/hopeio/gox/errors/errcode"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
@@ -34,11 +34,11 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := binding.Bind(c, &data)
 		if err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Save(&data).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpx.ResponseOk)
@@ -57,11 +57,11 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := binding.Bind(c, &data)
 		if err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err = db.Clauses(clausex.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpx.ResponseOk)
@@ -75,7 +75,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	url := apiPrefix + typ + "/:id"
 	server.DELETE(url, append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpx.ResponseOk)
@@ -85,11 +85,11 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	handler := append(middleware, func(c *gin.Context) {
 		var m map[string]any
 		if err := c.ShouldBindJSON(&m); err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpx.ResponseOk)
@@ -109,7 +109,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, httpx.NewSuccessRespData(data))
@@ -126,19 +126,19 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var page param.PageEmbed
 		err := binding.Bind(c, &page)
 		if err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
 		if page.PageNo > 0 && page.PageSize > 0 {
 			db = db.Offset((page.PageNo - 1) * page.PageSize).Limit(page.PageSize)
 			if err := db.Count(&count).Error; err != nil {
-				c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+				c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 				return
 			}
 		}
 		if err := db.Find(&list).Error; err != nil {
-			c.JSON(http.StatusOK, &errcodex.ErrRep{Code: errcodex.ErrCode(errcode.DBError), Msg: err.Error()})
+			c.JSON(http.StatusOK, &errors.ErrRep{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if count == 0 {
