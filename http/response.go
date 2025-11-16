@@ -14,11 +14,11 @@ type ExcelFile struct {
 	Options []excelize.Options
 }
 
-func (res *ExcelFile) Response(w http.ResponseWriter) (int, error) {
-	return res.CommonResponse(httpx.CommonResponseWriter{w})
+func (res *ExcelFile) Respond(w http.ResponseWriter) (int, error) {
+	return res.CommonRespond(httpx.CommonResponseWriter{ResponseWriter: w})
 }
 
-func (res *ExcelFile) CommonResponse(w httpx.ICommonResponseWriter) (int, error) {
+func (res *ExcelFile) CommonRespond(w httpx.ICommonResponseWriter) (int, error) {
 	header := w.Header()
 	header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
 	header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
