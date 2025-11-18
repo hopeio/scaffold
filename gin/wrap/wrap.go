@@ -1,4 +1,4 @@
-package warp
+package wrap
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"github.com/hopeio/gox/types"
 )
 
-func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
+func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := new(REQ)
 		err := binding.Bind(ctx, req)
@@ -22,11 +22,11 @@ func HandlerWrapCompatibleGRPC[REQ, RES any](service types.GrpcService[*REQ, *RE
 		ctxi := httpctx.FromRequest(httpctx.RequestCtx{ctx.Request, ctx.Writer})
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
-			httpx.RespError(ctx.Writer, reserr)
+			httpx.RespError(ctxi.Base(), ctx.Writer, reserr)
 			return
 		}
-		if httpres, ok := any(res).(httpx.ICommonRespond); ok {
-			httpres.CommonRespond(httpx.CommonResponseWriter{ctx.Writer})
+		if httpres, ok := any(res).(httpx.CommonResponder); ok {
+			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
 			return
 		}
 		ctx.JSON(http.StatusOK, httpx.NewSuccessRespData(res))

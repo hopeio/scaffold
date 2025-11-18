@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -14,11 +15,11 @@ type ExcelFile struct {
 	Options []excelize.Options
 }
 
-func (res *ExcelFile) Respond(w http.ResponseWriter) (int, error) {
-	return res.CommonRespond(httpx.CommonResponseWriter{ResponseWriter: w})
+func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) (int, error) {
+	return res.CommonRespond(ctx, httpx.ResponseWriterWrapper{ResponseWriter: w})
 }
 
-func (res *ExcelFile) CommonRespond(w httpx.ICommonResponseWriter) (int, error) {
+func (res *ExcelFile) CommonRespond(ctx context.Context, w httpx.CommonResponseWriter) (int, error) {
 	header := w.Header()
 	header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
 	header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
