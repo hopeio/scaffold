@@ -8,11 +8,12 @@ package prometheus
 
 // Deprecated 使用opentelemetry
 import (
+	"net/http"
+	"time"
+
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	prometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
-	"time"
 )
 
 /*func init() {
