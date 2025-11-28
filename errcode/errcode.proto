@@ -16,36 +16,36 @@ option (go.file) = {no_enum_prefix:true};
 enum ErrCode {
   option (enum.jsonmarshal) = false;
 
-  Success = 0 [(enum.text) = "成功",(go.value).name = "Success"];
-  Canceled = 1 [(enum.text) = "操作取消",(go.value).name = "Canceled"];
-  Unknown = 2 [(enum.text) = "未知错误",(go.value).name = "Unknown"];
-  InvalidArgument = 3 [(enum.text) = "无效的参数",(go.value).name = "InvalidArgument"];
-  DeadlineExceeded = 4 [(enum.text) = "响应超时",(go.value).name = "DeadlineExceeded"];
-  NotFound = 5 [(enum.text) = "未发现",(go.value).name = "NotFound"];
-  AlreadyExists = 6 [(enum.text) = "已经存在",(go.value).name = "AlreadyExists"];
-  PermissionDenied = 7 [(enum.text) = "操作无权限",(go.value).name = "PermissionDenied"];
-  ResourceExhausted = 8 [(enum.text) = "资源不足",(go.value).name = "ResourceExhausted"];
-  FailedPrecondition = 9 [(enum.text) = "操作被拒绝",(go.value).name = "FailedPrecondition"];
-  Aborted = 10 [(enum.text) = "操作终止",(go.value).name = "Aborted"];
-  OutOfRange = 11 [(enum.text) = "超出范围",(go.value).name = "OutOfRange"];
-  Unimplemented = 12 [(enum.text) = "未实现",(go.value).name = "Unimplemented"];
-  Internal = 13 [(enum.text) = "内部错误",(go.value).name = "Internal"];
-  Unavailable = 14 [(enum.text) = "服务不可用",(go.value).name = "Unavailable"];
-  DataLoss = 15 [(enum.text) = "数据丢失",(go.value).name = "DataLoss"];
-  Unauthenticated = 16 [(enum.text) = "身份未验证",(go.value).name = "Unauthenticated"];
+  Success = 0 [(enum.comment) = "成功",(go.value).name = "Success"];
+  Canceled = 1 [(enum.comment) = "操作取消",(go.value).name = "Canceled"];
+  Unknown = 2 [(enum.comment) = "未知错误",(go.value).name = "Unknown"];
+  InvalidArgument = 3 [(enum.comment) = "无效的参数",(go.value).name = "InvalidArgument"];
+  DeadlineExceeded = 4 [(enum.comment) = "响应超时",(go.value).name = "DeadlineExceeded"];
+  NotFound = 5 [(enum.comment) = "未发现",(go.value).name = "NotFound"];
+  AlreadyExists = 6 [(enum.comment) = "已经存在",(go.value).name = "AlreadyExists"];
+  PermissionDenied = 7 [(enum.comment) = "操作无权限",(go.value).name = "PermissionDenied"];
+  ResourceExhausted = 8 [(enum.comment) = "资源不足",(go.value).name = "ResourceExhausted"];
+  FailedPrecondition = 9 [(enum.comment) = "操作被拒绝",(go.value).name = "FailedPrecondition"];
+  Aborted = 10 [(enum.comment) = "操作终止",(go.value).name = "Aborted"];
+  OutOfRange = 11 [(enum.comment) = "超出范围",(go.value).name = "OutOfRange"];
+  Unimplemented = 12 [(enum.comment) = "未实现",(go.value).name = "Unimplemented"];
+  Internal = 13 [(enum.comment) = "内部错误",(go.value).name = "Internal"];
+  Unavailable = 14 [(enum.comment) = "服务不可用",(go.value).name = "Unavailable"];
+  DataLoss = 15 [(enum.comment) = "数据丢失",(go.value).name = "DataLoss"];
+  Unauthenticated = 16 [(enum.comment) = "身份未验证",(go.value).name = "Unauthenticated"];
 
 
-  SysError = 10000 [(enum.text) = "系统错误",(go.value).name = "SysError"];
+  SysError = 10000 [(enum.comment) = "系统错误",(go.value).name = "SysError"];
 
 
-  DBError = 21000 [(enum.text) = "数据库错误",(go.value).name = "DBError"];
-  RowExists = 21001 [(enum.text) = "记录已存在",(go.value).name = "RowExists"];
-  RedisErr = 22000 [(enum.text) = "Redis错误",(go.value).name = "RedisErr"];
+  DBError = 21000 [(enum.comment) = "数据库错误",(go.value).name = "DBError"];
+  RowExists = 21001 [(enum.comment) = "记录已存在",(go.value).name = "RowExists"];
+  RedisErr = 22000 [(enum.comment) = "Redis错误",(go.value).name = "RedisErr"];
 
-  IOError = 30000 [(enum.text) = "io错误",(go.value).name = "IOError"];
-  UploadFail = 30001 [(enum.text) = "上传失败",(go.value).name = "UploadFail"];
-  UploadCheckFail = 30002 [(enum.text) = "检查文件失败",(go.value).name = "UploadCheckFail"];
-  UploadCheckFormat = 30003 [(enum.text) = "文件格式或大小有问题",(go.value).name = "UploadCheckFormat"];
+  IOError = 30000 [(enum.comment) = "io错误",(go.value).name = "IOError"];
+  UploadFail = 30001 [(enum.comment) = "上传失败",(go.value).name = "UploadFail"];
+  UploadCheckFail = 30002 [(enum.comment) = "检查文件失败",(go.value).name = "UploadCheckFail"];
+  UploadCheckFormat = 30003 [(enum.comment) = "文件格式或大小有问题",(go.value).name = "UploadCheckFormat"];
 
-  TimesTooMuch = 30004 [(enum.text) = "尝试次数过多",(go.value).name = "TimesTooMuch"];
+  TimesTooMuch = 30004 [(enum.comment) = "尝试次数过多",(go.value).name = "TimesTooMuch"];
 }

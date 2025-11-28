@@ -65,7 +65,7 @@ func (x ErrCode) Text() string {
 }
 
 func (x ErrCode) MarshalGQL(w io.Writer) {
-	w.Write(strings.QuoteToBytes(x.String()))
+	w.Write(strings.SimpleQuoteToBytes(x.String()))
 }
 
 func (x *ErrCode) UnmarshalGQL(v interface{}) error {
