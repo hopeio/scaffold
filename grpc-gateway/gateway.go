@@ -53,9 +53,9 @@ func ForwardResponseMessage(ctx context.Context, writer http.ResponseWriter, mes
 	case httpx.Responder:
 		_, err = rb.Respond(ctx, writer)
 		return err
-	case gateway.ResponseBody:
+	case httpx.ResponseBody:
 		buf = rb.ResponseBody()
-	case gateway.XXXResponseBody:
+	case httpx.XXXResponseBody:
 		buf, err = JsonPb.Marshal(rb.XXX_ResponseBody())
 	default:
 		buf, err = JsonPb.Marshal(message)
