@@ -123,7 +123,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url := apiPrefix + typ
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
-		var page param.PageEmbed
+		var page param.PaginationEmbedded
 		err := binding.Bind(c, &page)
 		if err != nil {
 			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
