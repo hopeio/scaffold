@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hopeio/context/httpctx"
+	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/gin/binding"

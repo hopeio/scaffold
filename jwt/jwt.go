@@ -3,24 +3,24 @@ package jwt
 import (
 	"encoding/json"
 	"errors"
-	"github.com/hopeio/context/reqctx"
-	stringsx "github.com/hopeio/gox/strings"
-	jwtx "github.com/hopeio/gox/validation/auth/jwt"
 	"reflect"
+
+	"github.com/hopeio/gox/context/reqctx"
+	"github.com/hopeio/gox/strings"
 )
 
 type authorization[A reqctx.AuthInfo] struct {
-	jwtx.Claims[A]
+	Claims[A]
 	AuthInfoRaw string `json:"-"`
 }
 
 func (x *authorization[A]) UnmarshalJSON(data []byte) error {
-	x.AuthInfoRaw = stringsx.BytesToString(data)
+	x.AuthInfoRaw = strings.BytesToString(data)
 	return json.Unmarshal(data, &x.Claims)
 }
 
 func (x *authorization[A]) ParseToken(token string, secret []byte) error {
-	_, err := jwtx.ParseToken(x, token, secret)
+	_, err := ParseToken(x, token, secret)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 	return nil
 }
 
-func Auth[REQ reqctx.ReqCtx, A reqctx.AuthInfo](ctx *reqctx.Context[REQ], secret []byte) (*jwtx.Claims[A], error) {
+func Auth[REQ reqctx.ReqCtx, A reqctx.AuthInfo](ctx *reqctx.Context[REQ], secret []byte) (*Claims[A], error) {
 	authorization := authorization[A]{}
 	if err := authorization.ParseToken(ctx.Token, secret); err != nil {
 		return nil, err
