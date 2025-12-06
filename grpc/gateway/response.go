@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/grpc"
@@ -22,10 +24,9 @@ func init() {
 	gatewayx.Marshaler = &Protobuf{}
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
-
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
 		ctx.Header(httpx.HeaderContentType, gatewayx.Marshaler.ContentType(nil))
-		ctx.Status(209)
+		ctx.Header("Grpc-Status", strconv.Itoa(int(s.Code())))
 		se := &response.CommonResp{Code: uint32(s.Code()), Msg: s.Message()}
 		buf, merr := gatewayx.Marshaler.Marshal(se)
 		if merr != nil {
@@ -45,7 +46,7 @@ func init() {
 			ctx.Writer.Write(protoOk)
 			return
 		}
-		ctx.Status(209)
+
 		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.Marshaler)
 		if err != nil {
 			gateway.HttpError(ctx, err)
