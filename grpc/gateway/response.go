@@ -9,7 +9,6 @@ import (
 	gatewayx "github.com/hopeio/gox/net/http/grpc/gateway"
 	"github.com/hopeio/protobuf/grpc/gateway"
 	"github.com/hopeio/protobuf/response"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -25,21 +24,8 @@ func init() {
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
-		ctx.Header(httpx.HeaderContentType, gatewayx.Marshaler.ContentType(nil))
 		ctx.Header("Grpc-Status", strconv.Itoa(int(s.Code())))
-		se := &response.CommonResp{Code: uint32(s.Code()), Msg: s.Message()}
-		buf, merr := gatewayx.Marshaler.Marshal(se)
-		if merr != nil {
-			grpclog.Infof("Failed to marshal error message %q: %v", se, merr)
-			if _, err := ctx.Writer.Write(marshalErr); err != nil {
-				grpclog.Infof("Failed to write response: %v", err)
-			}
-			return
-		}
-
-		if _, err := ctx.Writer.Write(buf); err != nil {
-			grpclog.Infof("Failed to write response: %v", err)
-		}
+		ctx.Header("Grpc-Message", s.Message())
 	}
 	gateway.ForwardResponseMessage = func(ctx *gin.Context, md grpc.ServerMetadata, message proto.Message) {
 		if !message.ProtoReflect().IsValid() {
