@@ -25,11 +25,21 @@ func init() {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
 		ctx.Header("Grpc-Status", strconv.Itoa(int(s.Code())))
-		ctx.Header("Grpc-Message", s.Message())
+		message := &response.CommonResp{
+			Code: int32(s.Code()),
+			Msg:  s.Message(),
+		}
+		buf, err := gatewayx.Marshaler.Marshal(message)
+		if err != nil {
+			ctx.Header("Grpc-Status", "14")
+			ctx.Header("Grpc-Message", "failed to marshal error message")
+			return
+		}
+		ctx.Header(httpx.HeaderContentType, gatewayx.Marshaler.ContentType(message))
+		ctx.Writer.Write(buf)
 	}
 	gateway.ForwardResponseMessage = func(ctx *gin.Context, md grpc.ServerMetadata, message proto.Message) {
 		if !message.ProtoReflect().IsValid() {
-			ctx.Writer.Write(protoOk)
 			return
 		}
 
