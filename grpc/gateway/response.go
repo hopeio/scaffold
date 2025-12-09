@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -20,22 +21,23 @@ var marshalErr, _ = proto.Marshal(&response.CommonResp{
 })
 
 func init() {
-	gatewayx.Marshaler = &Protobuf{}
+	gatewayx.Codec = &Protobuf{}
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
-		ctx.Header("Grpc-Status", strconv.Itoa(int(s.Code())))
+		ctx.Header(httpx.HeaderGrpcStatus, strconv.Itoa(int(s.Code())))
 		message := &response.CommonResp{
 			Code: int32(s.Code()),
 			Msg:  s.Message(),
 		}
-		buf, err := gatewayx.Marshaler.Marshal(message)
+		ctx.Header(httpx.HeaderContentType, gatewayx.Codec.ContentType(message))
+		buf, err := gatewayx.Codec.Marshal(message)
 		if err != nil {
-			ctx.Header("Grpc-Status", "14")
-			ctx.Header("Grpc-Message", "failed to marshal error message")
+			ctx.Status(http.StatusInternalServerError)
+			ctx.Header(httpx.HeaderGrpcStatus, "14")
+			ctx.Header(httpx.HeaderGrpcMessage, err.Error())
 			return
 		}
-		ctx.Header(httpx.HeaderContentType, gatewayx.Marshaler.ContentType(message))
 		ctx.Writer.Write(buf)
 	}
 	gateway.ForwardResponseMessage = func(ctx *gin.Context, md grpc.ServerMetadata, message proto.Message) {
@@ -43,7 +45,7 @@ func init() {
 			return
 		}
 
-		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.Marshaler)
+		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.Codec)
 		if err != nil {
 			gateway.HttpError(ctx, err)
 			return

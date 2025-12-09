@@ -7,16 +7,22 @@ import (
 	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
-	"github.com/hopeio/gox/net/http/gin/binding"
 	"github.com/hopeio/gox/types"
+	"github.com/hopeio/protobuf/grpc/gateway"
 )
 
 func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := new(REQ)
-		err := binding.Bind(ctx, req)
+		err := gateway.Bind(ctx, req)
 		if err != nil {
-			ctx.JSON(http.StatusOK, errors.InvalidArgument.Wrap(err))
+			data, err := gateway.Codec.Marshal(errors.InvalidArgument.Msg(err.Error()))
+			if err != nil {
+				ctx.Status(http.StatusInternalServerError)
+				ctx.Abort()
+				return
+			}
+			ctx.Writer.Write(data)
 			return
 		}
 		ctxi := httpctx.FromRequest(httpctx.RequestCtx{ctx.Request, ctx.Writer})
@@ -29,6 +35,12 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
 			return
 		}
-		ctx.JSON(http.StatusOK, httpx.NewSuccessRespData(res))
+		data, err := gateway.Codec.Marshal(httpx.NewSuccessRespData(res))
+		if err != nil {
+			ctx.Status(http.StatusInternalServerError)
+			ctx.Abort()
+			return
+		}
+		ctx.Writer.Write(data)
 	}
 }

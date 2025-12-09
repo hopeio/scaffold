@@ -3,6 +3,7 @@ package crud
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/gox/errors"
+	ginx "github.com/hopeio/gox/net/http/gin"
 	"github.com/hopeio/scaffold/errcode"
 
 	"log"
@@ -34,14 +35,14 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := binding.Bind(c, &data)
 		if err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Save(&data).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpx.RespOk)
+		ginx.Respond(c, &httpx.ErrResp{})
 	})
 	url := apiPrefix + typ
 	server.POST(url, cu...)
@@ -57,14 +58,14 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := binding.Bind(c, &data)
 		if err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err = db.Clauses(clausex.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpx.RespOk)
+		ginx.Respond(c, &httpx.ErrResp{})
 	})...)
 	Log(http.MethodPut, url, "update "+typ)
 }
@@ -75,24 +76,24 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	url := apiPrefix + typ + "/:id"
 	server.DELETE(url, append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpx.RespOk)
+		ginx.Respond(c, &httpx.ErrResp{})
 	})...)
 	Log(http.MethodDelete, url, "delete "+typ)
 
 	handler := append(middleware, func(c *gin.Context) {
 		var m map[string]any
 		if err := c.ShouldBindJSON(&m); err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpx.RespOk)
+		ginx.Respond(c, &httpx.ErrResp{})
 	})
 	url = apiPrefix + typ
 	server.DELETE(url, handler...)
@@ -109,10 +110,10 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, httpx.NewSuccessRespData(data))
+		ginx.Respond(c, httpx.NewSuccessRespData(data))
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
@@ -126,25 +127,25 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var page param.PaginationEmbedded
 		err := binding.Bind(c, &page)
 		if err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
 		if page.PageNo > 0 && page.PageSize > 0 {
 			db = db.Offset((page.PageNo - 1) * page.PageSize).Limit(page.PageSize)
 			if err := db.Count(&count).Error; err != nil {
-				c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+				ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 				return
 			}
 		}
 		if err := db.Find(&list).Error; err != nil {
-			c.JSON(http.StatusOK, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if count == 0 {
 			count = int64(len(list))
 		}
-		c.JSON(http.StatusOK, httpx.NewSuccessRespData(&result.List[*T]{List: list, Total: uint(count)}))
+		ginx.Respond(c, httpx.NewSuccessRespData(&result.List[*T]{List: list, Total: uint(count)}))
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }

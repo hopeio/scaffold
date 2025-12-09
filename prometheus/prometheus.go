@@ -21,7 +21,7 @@ import (
 	conf := metrics.DefaultConfig("")
 	metrics1, _ := metrics.New(conf, sink)
 	metrics1.EnableHostnameLabel = true
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handler("/metrics", promhttp.Handler())
 	reg.MustRegister(srvMetrics)
 }*/
 
