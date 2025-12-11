@@ -14,8 +14,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var protoOk, _ = proto.Marshal(&response.CommonResp{})
-var marshalErr, _ = proto.Marshal(&response.CommonResp{
+var protoOk, _ = proto.Marshal(&response.ErrResp{})
+var marshalErr, _ = proto.Marshal(&response.ErrResp{
 	Code: 14,
 	Msg:  "failed to marshal error message",
 })
@@ -26,7 +26,7 @@ func init() {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
 		ctx.Header(httpx.HeaderGrpcStatus, strconv.Itoa(int(s.Code())))
-		message := &response.CommonResp{
+		message := &response.ErrResp{
 			Code: int32(s.Code()),
 			Msg:  s.Message(),
 		}

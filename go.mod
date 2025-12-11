@@ -11,7 +11,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
 	github.com/hopeio/context v0.5.13
 	github.com/hopeio/gox v1.6.6
-	github.com/hopeio/protobuf v0.6.8
+	github.com/hopeio/protobuf v0.7.0
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.4
@@ -64,7 +64,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/hopeio/cherry v1.20.6 // indirect
+	github.com/hopeio/cherry v1.20.7 // indirect
 	github.com/hopeio/pick v1.13.5 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
