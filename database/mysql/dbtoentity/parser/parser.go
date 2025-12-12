@@ -9,12 +9,12 @@ package parser
 import (
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/hopeio/gox/database/sql/mysql"
-	dbi "github.com/hopeio/scaffold/database/toentity"
+	"github.com/hopeio/scaffold/database/toentity"
 )
 
 func MysqlConvertByTable(sql string) {
 	gen := NewMysqlGen(sql)
-	dbi.ConvertByTable(gen, gen.Tables()[0])
+	toentity.ConvertByTable(gen, gen.Tables()[0])
 }
 
 type mysqlgen struct {
@@ -30,10 +30,10 @@ func (m *mysqlgen) Tables() []string {
 	return []string{m.DDL.NewName.Name.String()}
 }
 
-func (m *mysqlgen) Fields(tableName string) []*dbi.Field {
-	var dbfields []*dbi.Field
+func (m *mysqlgen) Fields(tableName string) []*toentity.Field {
+	var dbfields []*toentity.Field
 	for i, column := range m.Columns {
-		dbfields = append(dbfields, &dbi.Field{
+		dbfields = append(dbfields, &toentity.Field{
 			Field:   column.Name,
 			Type:    column.Type,
 			Comment: "",

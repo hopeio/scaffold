@@ -10,7 +10,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	dbi "github.com/hopeio/scaffold/database/toentity"
+	"github.com/hopeio/scaffold/database/toentity"
 
 	"go/ast"
 	"go/format"
@@ -32,7 +32,7 @@ func TestTableToEntity(t *testing.T) {
 
 func TestAst(t *testing.T) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "tmpl.go", dbi.Tmpl, parser.ParseComments)
+	f, err := parser.ParseFile(fset, "tmpl.go", toentity.Tmpl, parser.ParseComments)
 	if err != nil {
 		fmt.Println(err)
 		return

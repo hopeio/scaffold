@@ -10,17 +10,17 @@ import (
 	"database/sql"
 
 	"github.com/hopeio/gox/database/sql/mysql"
-	dbi "github.com/hopeio/scaffold/database/toentity"
+	"github.com/hopeio/scaffold/database/toentity"
 )
 
 func MysqlConvert(db *sql.DB, filename string) {
 	mysqlgen := mysqlgen{db: db}
-	dbi.Convert(&mysqlgen, filename)
+	toentity.Convert(&mysqlgen, filename)
 }
 
 func MysqlConvertByTable(db *sql.DB, tableName string) {
 	mysqlgen := mysqlgen{db: db}
-	dbi.ConvertByTable(&mysqlgen, tableName)
+	toentity.ConvertByTable(&mysqlgen, tableName)
 }
 
 type mysqlgen struct {
@@ -38,11 +38,11 @@ func (m *mysqlgen) Tables() []string {
 	return tables
 }
 
-func (m *mysqlgen) Fields(tableName string) []*dbi.Field {
-	var dbfields []*dbi.Field
+func (m *mysqlgen) Fields(tableName string) []*toentity.Field {
+	var dbfields []*toentity.Field
 	rows, _ := m.db.Query(`SHOW FULL COLUMNS FROM ` + tableName)
 	for rows.Next() {
-		var dbfield dbi.Field
+		var dbfield toentity.Field
 		rows.Scan(&dbfield.Field, &dbfield.Type, &dbfield.Comment)
 		dbfields = append(dbfields, &dbfield)
 	}

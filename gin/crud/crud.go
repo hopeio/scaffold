@@ -15,8 +15,8 @@ import (
 	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
-	"github.com/hopeio/gox/types/param"
-	"github.com/hopeio/gox/types/result"
+	"github.com/hopeio/gox/types/request"
+	"github.com/hopeio/gox/types/response"
 	"gorm.io/gorm"
 )
 
@@ -124,7 +124,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url := apiPrefix + typ
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
-		var page param.PaginationEmbedded
+		var page request.PaginationEmbedded
 		err := binding.Bind(c, &page)
 		if err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
@@ -145,7 +145,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		if count == 0 {
 			count = int64(len(list))
 		}
-		ginx.Respond(c, httpx.NewSuccessRespData(&result.List[*T]{List: list, Total: uint(count)}))
+		ginx.Respond(c, httpx.NewSuccessRespData(&response.List[*T]{List: list, Total: uint(count)}))
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
