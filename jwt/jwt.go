@@ -30,7 +30,7 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 			return errors.New("auth info is nil")
 		}
 	}
-	x.ID = x.Auth.IdStr()
+	x.ID = x.Auth.GetId()
 	return nil
 }
 
@@ -42,6 +42,6 @@ func Auth[REQ reqctx.ReqCtx, A reqctx.AuthInfo](ctx *reqctx.Context[REQ], secret
 	authInfo := authorization.Auth
 	ctx.AuthID = authorization.ID
 	ctx.AuthInfo = authInfo
-	ctx.AuthInfoRaw = authorization.AuthInfoRaw
+	ctx.AuthRaw = authorization.AuthInfoRaw
 	return &authorization.Claims, nil
 }
