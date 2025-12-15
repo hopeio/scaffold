@@ -92,7 +92,7 @@ func NewDecl() *ast.GenDecl {
 			Obj:     nil,
 		},
 		Decls:      nil,
-		Scope:      nil,
+		Range:      nil,
 		Imports:    nil,
 		Unresolved: nil,
 		Comments:   nil,

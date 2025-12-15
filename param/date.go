@@ -17,7 +17,7 @@ type DateFilter struct {
 }
 
 // 赋值本周期，并返回下周期日期
-func (d *DateFilter) Scope() (time.Time, time.Time) {
+func (d *DateFilter) Range() (time.Time, time.Time) {
 	var zero time.Time
 	if d.Begin != zero && d.End != zero {
 		return d.Begin, d.End
