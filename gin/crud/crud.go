@@ -15,12 +15,11 @@ import (
 	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
-	"github.com/hopeio/gox/types/request"
 	"github.com/hopeio/gox/types/response"
 	"gorm.io/gorm"
 )
 
-const apiPrefix = "/api/v1"
+const apiPrefix = "/api/"
 
 func CRUD[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	Save[T](server, db, middleware...)
@@ -124,21 +123,21 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url := apiPrefix + typ
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
-		var page request.PaginationEmbedded
+		var page clausex.PaginationEmbedded
 		err := binding.Bind(c, &page)
 		if err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
-		if page.PageNo > 0 && page.PageSize > 0 {
-			db = db.Offset((page.PageNo - 1) * page.PageSize).Limit(page.PageSize)
-			if err := db.Count(&count).Error; err != nil {
-				ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
-				return
-			}
+		if clauses := page.ToPagination().Clauses(); len(clauses) > 0 {
+			db = db.Clauses(clauses...)
 		}
-		if err := db.Find(&list).Error; err != nil {
+		if err = db.Count(&count).Error; err != nil {
+			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			return
+		}
+		if err = db.Find(&list).Error; err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}

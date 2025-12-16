@@ -27,7 +27,7 @@ type LogEntry struct {
 
 func main() {
 	// 初始化 Loki 客户端
-	config, _ := loki.NewDefaultConfig("http://host/loki/api/v1/push")
+	config, _ := loki.NewDefaultConfig("http://host/loki/api/push")
 	config.BatchWait = time.Second
 	client, err := loki.New(config)
 	if err != nil {
