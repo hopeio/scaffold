@@ -16,7 +16,7 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
 		if err != nil {
-			data, err := gateway.Codec.Marshal(errors.InvalidArgument.Msg(err.Error()))
+			data, err := gateway.Marshaler.Marshal(errors.InvalidArgument.Msg(err.Error()))
 			if err != nil {
 				ctx.Status(http.StatusInternalServerError)
 				ctx.Abort()
@@ -35,7 +35,7 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
 			return
 		}
-		data, err := gateway.Codec.Marshal(httpx.NewSuccessRespData(res))
+		data, err := gateway.Marshaler.Marshal(httpx.NewSuccessRespData(res))
 		if err != nil {
 			ctx.Status(http.StatusInternalServerError)
 			ctx.Abort()

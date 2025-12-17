@@ -21,21 +21,22 @@ var marshalErr, _ = proto.Marshal(&response.ErrResp{
 })
 
 func init() {
-	gatewayx.Codec = &Protobuf{}
+	gatewayx.DefaultMarshaler = &Protobuf{}
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
-		ctx.Header(httpx.HeaderGrpcStatus, strconv.Itoa(int(s.Code())))
+		errcode := strconv.Itoa(int(s.Code()))
+		ctx.Header(httpx.HeaderGrpcStatus, errcode)
+		ctx.Header(httpx.HeaderErrorCode, errcode)
 		message := &response.ErrResp{
 			Code: int32(s.Code()),
 			Msg:  s.Message(),
 		}
-		ctx.Header(httpx.HeaderContentType, gatewayx.Codec.ContentType(message))
-		buf, err := gatewayx.Codec.Marshal(message)
+		ctx.Header(httpx.HeaderContentType, gatewayx.DefaultMarshaler.ContentType(message))
+		buf, err := gatewayx.DefaultMarshaler.Marshal(message)
 		if err != nil {
 			ctx.Status(http.StatusInternalServerError)
-			ctx.Header(httpx.HeaderGrpcStatus, "14")
-			ctx.Header(httpx.HeaderGrpcMessage, err.Error())
+			ctx.Writer.Write([]byte(err.Error()))
 			return
 		}
 		ctx.Writer.Write(buf)
@@ -45,7 +46,7 @@ func init() {
 			return
 		}
 
-		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.Codec)
+		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.DefaultMarshaler)
 		if err != nil {
 			gateway.HttpError(ctx, err)
 			return
