@@ -1,8 +1,6 @@
 package wrap
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
@@ -13,19 +11,14 @@ import (
 
 func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		ctxi := httpctx.FromRequest(httpctx.RequestCtx{ctx.Request, ctx.Writer})
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
 		if err != nil {
-			data, err := gateway.Marshaler.Marshal(errors.InvalidArgument.Msg(err.Error()))
-			if err != nil {
-				ctx.Status(http.StatusInternalServerError)
-				ctx.Abort()
-				return
-			}
-			ctx.Writer.Write(data)
+			httpx.RespError(ctxi.Base(), ctx.Writer, errors.InvalidArgument.Msg(err.Error()))
 			return
 		}
-		ctxi := httpctx.FromRequest(httpctx.RequestCtx{ctx.Request, ctx.Writer})
+
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
 			httpx.RespError(ctxi.Base(), ctx.Writer, reserr)
@@ -35,12 +28,6 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
 			return
 		}
-		data, err := gateway.Marshaler.Marshal(httpx.NewSuccessRespData(res))
-		if err != nil {
-			ctx.Status(http.StatusInternalServerError)
-			ctx.Abort()
-			return
-		}
-		ctx.Writer.Write(data)
+		gateway.ForwardResponseMessage(ctx, ctx.Writer, res)
 	}
 }
