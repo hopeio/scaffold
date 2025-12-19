@@ -17,12 +17,12 @@ func (x ErrCode) Code() int {
 }
 
 func (x ErrCode) ErrResp() *errors.ErrResp {
-	return &errors.ErrResp{Code: errors.ErrCode(x), Msg: x.Text()}
+	return &errors.ErrResp{Code: errors.ErrCode(x), Msg: x.Comment()}
 }
 
 // example 实现
 func (x ErrCode) GRPCStatus() *status.Status {
-	return status.New(codes.Code(x), x.Text())
+	return status.New(codes.Code(x), x.Comment())
 }
 
 func (x ErrCode) Msg(msg string) *errors.ErrResp {
@@ -34,7 +34,7 @@ func (x ErrCode) Wrap(err error) *errors.ErrResp {
 }
 
 func (x ErrCode) Error() string {
-	return x.Text()
+	return x.Comment()
 }
 
 /*func (x ErrCode) MarshalJSON() ([]byte, error) {
@@ -45,6 +45,6 @@ func (x ErrCode) Error() string {
 
 func init() {
 	for code := range ErrCode_name {
-		errors.Register(errors.ErrCode(code), ErrCode(code).Text())
+		errors.Register(errors.ErrCode(code), ErrCode(code).Comment())
 	}
 }

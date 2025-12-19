@@ -2,11 +2,12 @@ package errcode
 
 import (
 	errors "errors"
-	strings "github.com/hopeio/gox/strings"
 	io "io"
+
+	strings "github.com/hopeio/gox/strings"
 )
 
-func (x ErrCode) Text() string {
+func (x ErrCode) Comment() string {
 	switch x {
 	case Success:
 		return "成功"

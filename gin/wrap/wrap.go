@@ -5,8 +5,11 @@ import (
 	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
+	grpc_0 "github.com/hopeio/gox/net/http/grpc"
 	"github.com/hopeio/gox/types"
 	"github.com/hopeio/protobuf/grpc/gateway"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
@@ -15,19 +18,21 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
 		if err != nil {
-			httpx.RespError(ctxi.Base(), ctx.Writer, errors.InvalidArgument.Msg(err.Error()))
+			httpx.RespondError(ctxi.Base(), ctx.Writer, errors.InvalidArgument.Msg(err.Error()))
 			return
 		}
+		var stream grpc_0.ServerTransportStream
+		ctx.Request = ctx.Request.WithContext(grpc.NewContextWithServerTransportStream(metadata.NewIncomingContext(ctx.Request.Context(), metadata.MD(ctx.Request.Header)), &stream))
 
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
-			httpx.RespError(ctxi.Base(), ctx.Writer, reserr)
+			httpx.RespondError(ctxi.Base(), ctx.Writer, reserr)
 			return
 		}
 		if httpres, ok := any(res).(httpx.CommonResponder); ok {
 			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
 			return
 		}
-		gateway.ForwardResponseMessage(ctx, ctx.Writer, res)
+		httpx.RespondSuccess(ctxi.Base(), ctx.Writer, res)
 	}
 }

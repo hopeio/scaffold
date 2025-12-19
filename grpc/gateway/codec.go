@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	jsonx "github.com/hopeio/gox/encoding/json"
+	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
 	"google.golang.org/protobuf/proto"
 )
@@ -8,20 +10,29 @@ import (
 type Protobuf struct {
 }
 
-func (*Protobuf) ContentType(_ interface{}) string {
-	return httpx.ContentTypeProtobuf
+func (*Protobuf) ContentType(v interface{}) string {
+	if _, ok := v.(proto.Message); ok {
+		return httpx.ContentTypeProtobuf
+	}
+	return httpx.ContentTypeJson
 }
 
 func (j *Protobuf) Marshal(v any) ([]byte, error) {
-	return proto.Marshal(v.(proto.Message))
+	if p, ok := v.(proto.Message); ok {
+		return proto.Marshal(p)
+	}
+	return jsonx.Marshal(httpx.NewRespData(errors.Success, errors.Success.String(), v))
 }
 
 func (j *Protobuf) Name() string {
-	return "jsonpb"
+	return "protobuf"
 }
 
 func (j *Protobuf) Unmarshal(data []byte, v interface{}) error {
-	return proto.Unmarshal(data, v.(proto.Message))
+	if p, ok := v.(proto.Message); ok {
+		return proto.Unmarshal(data, p)
+	}
+	return jsonx.Unmarshal(data, v)
 }
 
 func (j *Protobuf) Delimiter() []byte {

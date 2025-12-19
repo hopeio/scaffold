@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -32,12 +31,19 @@ func init() {
 			Code: int32(s.Code()),
 			Msg:  s.Message(),
 		}
-		ctx.Header(httpx.HeaderContentType, gatewayx.DefaultMarshaler.ContentType(message))
+		contentType := gatewayx.DefaultMarshaler.ContentType(message)
+
 		buf, err := gatewayx.DefaultMarshaler.Marshal(message)
 		if err != nil {
-			ctx.Status(http.StatusInternalServerError)
+			contentType = httpx.ContentTypeText
 			ctx.Writer.Write([]byte(err.Error()))
-			return
+		}
+		ctx.Header(httpx.HeaderContentType, contentType)
+		if ww, ok := ctx.Writer.(httpx.Unwrapper); ok {
+			ow := ww.Unwrap()
+			if recorder, ok := ow.(httpx.ResponseRecorder); ok {
+				recorder.RecordResponse(contentType, buf, message)
+			}
 		}
 		ctx.Writer.Write(buf)
 	}

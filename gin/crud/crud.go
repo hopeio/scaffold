@@ -5,6 +5,7 @@ import (
 	"github.com/hopeio/gox/errors"
 	ginx "github.com/hopeio/gox/net/http/gin"
 	"github.com/hopeio/scaffold/errcode"
+	response"github.com/hopeio/protobuf/response"
 
 	"log"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
-	"github.com/hopeio/gox/types/response"
+	responsex "github.com/hopeio/gox/types/response"
 	"gorm.io/gorm"
 )
 
@@ -112,7 +113,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, httpx.NewSuccessRespData(data))
+		ginx.Respond(c, data)
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
@@ -126,7 +127,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var page clausex.PaginationEmbedded
 		err := binding.Bind(c, &page)
 		if err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
@@ -134,17 +135,17 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			db = db.Clauses(clauses...)
 		}
 		if err = db.Count(&count).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if err = db.Find(&list).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if count == 0 {
 			count = int64(len(list))
 		}
-		ginx.Respond(c, httpx.NewSuccessRespData(&response.List[*T]{List: list, Total: uint(count)}))
+		ginx.Respond(c, &responsex.List[*T]{List: list, Total: uint(count)})
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
