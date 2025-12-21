@@ -21,7 +21,7 @@ func (j *Protobuf) Marshal(v any) ([]byte, error) {
 	if p, ok := v.(proto.Message); ok {
 		return proto.Marshal(p)
 	}
-	return jsonx.Marshal(httpx.NewRespData(errors.Success, errors.Success.String(), v))
+	return jsonx.Marshal(httpx.NewCommonAnyResp(errors.Success, "", v))
 }
 
 func (j *Protobuf) Name() string {

@@ -2,17 +2,17 @@ package crud
 
 import (
 	"github.com/gin-gonic/gin"
+	sqlx "github.com/hopeio/gox/database/sql"
 	"github.com/hopeio/gox/errors"
 	ginx "github.com/hopeio/gox/net/http/gin"
+	response "github.com/hopeio/protobuf/response"
 	"github.com/hopeio/scaffold/errcode"
-	response"github.com/hopeio/protobuf/response"
 
 	"log"
 	"net/http"
 	"reflect"
 
 	clausex "github.com/hopeio/gox/database/sql/gorm/clause"
-	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
@@ -42,7 +42,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, &httpx.ErrResp{})
+		ginx.Respond(c, nil)
 	})
 	url := apiPrefix + typ
 	server.POST(url, cu...)
@@ -65,7 +65,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, &httpx.ErrResp{})
+		ginx.Respond(c, nil)
 	})...)
 	Log(http.MethodPut, url, "update "+typ)
 }
@@ -79,7 +79,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, &httpx.ErrResp{})
+		ginx.Respond(c, nil)
 	})...)
 	Log(http.MethodDelete, url, "delete "+typ)
 
@@ -93,7 +93,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, &httpx.ErrResp{})
+		ginx.Respond(c, nil)
 	})
 	url = apiPrefix + typ
 	server.DELETE(url, handler...)
@@ -124,15 +124,18 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url := apiPrefix + typ
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
-		var page clausex.PaginationEmbedded
-		err := binding.Bind(c, &page)
+		var req sqlx.List
+		err := binding.Bind(c, &req)
 		if err != nil {
 			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
-		if clauses := page.ToPagination().Clauses(); len(clauses) > 0 {
-			db = db.Clauses(clauses...)
+		if clause := clausex.PaginationExpr(req.Pagination.No, req.Pagination.Size); clause != nil {
+			db = db.Clauses(clause)
+		}
+		if clause := clausex.SortExpr(nil, req.Sort...); clause != nil {
+			db = db.Clauses(clause)
 		}
 		if err = db.Count(&count).Error; err != nil {
 			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
