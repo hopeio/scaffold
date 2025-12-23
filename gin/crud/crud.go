@@ -13,7 +13,6 @@ import (
 	"reflect"
 
 	clausex "github.com/hopeio/gox/database/sql/gorm/clause"
-	"github.com/hopeio/gox/net/http/gin/binding"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
 	responsex "github.com/hopeio/gox/types/response"
@@ -33,7 +32,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
 	cu := append(middleware, func(c *gin.Context) {
 		var data T
-		err := binding.Bind(c, &data)
+		err := ginx.Bind(c, &data)
 		if err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
@@ -56,7 +55,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url = apiPrefix + typ + "/:id"
 	server.PUT(url, append(middleware, func(c *gin.Context) {
 		var data T
-		err := binding.Bind(c, &data)
+		err := ginx.Bind(c, &data)
 		if err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
@@ -125,7 +124,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
 		var req sqlx.List
-		err := binding.Bind(c, &req)
+		err := ginx.Bind(c, &req)
 		if err != nil {
 			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
 			return

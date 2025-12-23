@@ -11,13 +11,13 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hopeio/gox/encoding/json"
-	"github.com/hopeio/gox/net/http"
+	"github.com/hopeio/gox/net/http/grpc/gateway"
 )
 
 var JsonPb = &JSONPb{}
 
 type JSONPb struct {
-	http.Json
+	gateway.Json
 }
 
 // NewDecoder returns a runtime.Decoder which reads JSON stream from "r".

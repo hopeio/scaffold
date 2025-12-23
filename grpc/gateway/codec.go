@@ -7,34 +7,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Protobuf struct {
-}
-
-func (*Protobuf) ContentType(v interface{}) string {
-	if _, ok := v.(proto.Message); ok {
-		return httpx.ContentTypeProtobuf
-	}
-	return httpx.ContentTypeJson
-}
-
-func (j *Protobuf) Marshal(v any) ([]byte, error) {
+func Marshal(accept string, v any) ([]byte, string) {
 	if p, ok := v.(proto.Message); ok {
-		return proto.Marshal(p)
+		data, err := proto.Marshal(p)
+		if err != nil {
+			data = []byte(err.Error())
+			return data, httpx.ContentTypeText
+		}
+		return data, httpx.ContentTypeProtobuf
 	}
-	return jsonx.Marshal(httpx.NewCommonAnyResp(errors.Success, "", v))
-}
-
-func (j *Protobuf) Name() string {
-	return "protobuf"
-}
-
-func (j *Protobuf) Unmarshal(data []byte, v interface{}) error {
-	if p, ok := v.(proto.Message); ok {
-		return proto.Unmarshal(data, p)
+	data, err := jsonx.Marshal(httpx.NewCommonAnyResp(errors.Success, "", v))
+	if err != nil {
+		data = []byte(err.Error())
+		return data, httpx.ContentTypeText
 	}
-	return jsonx.Unmarshal(data, v)
-}
-
-func (j *Protobuf) Delimiter() []byte {
-	return []byte("\n")
+	return data, httpx.ContentTypeJson
 }

@@ -20,7 +20,7 @@ var marshalErr, _ = proto.Marshal(&response.ErrResp{
 })
 
 func init() {
-	gatewayx.DefaultMarshaler = &Protobuf{}
+	gatewayx.DefaultMarshal = Marshal
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
@@ -31,13 +31,9 @@ func init() {
 			Code: int32(s.Code()),
 			Msg:  s.Message(),
 		}
-		contentType := gatewayx.DefaultMarshaler.ContentType(message)
 
-		buf, err := gatewayx.DefaultMarshaler.Marshal(message)
-		if err != nil {
-			contentType = httpx.ContentTypeText
-			ctx.Writer.Write([]byte(err.Error()))
-		}
+		buf, contentType := gatewayx.DefaultMarshal(ctx.GetHeader(httpx.HeaderAccept), message)
+
 		ctx.Header(httpx.HeaderContentType, contentType)
 		if ww, ok := ctx.Writer.(httpx.Unwrapper); ok {
 			ow := ww.Unwrap()
@@ -52,7 +48,7 @@ func init() {
 			return
 		}
 
-		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.DefaultMarshaler)
+		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.DefaultMarshal)
 		if err != nil {
 			gateway.HttpError(ctx, err)
 			return
