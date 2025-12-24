@@ -37,8 +37,8 @@ func init() {
 		ctx.Header(httpx.HeaderContentType, contentType)
 		if ww, ok := ctx.Writer.(httpx.Unwrapper); ok {
 			ow := ww.Unwrap()
-			if recorder, ok := ow.(httpx.ResponseRecorder); ok {
-				recorder.RecordResponse(contentType, buf, message)
+			if recorder, ok := ow.(httpx.RecordBody); ok {
+				recorder.RecordBody(buf, message)
 			}
 		}
 		ctx.Writer.Write(buf)

@@ -15,15 +15,20 @@ type ExcelFile struct {
 	Options []excelize.Options
 }
 
-func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) (int, error) {
-	return res.CommonRespond(ctx, httpx.ResponseWriterWrapper{ResponseWriter: w})
+func (res *ExcelFile) ServeHTTP(ctx context.Context, w http.ResponseWriter) {
+	res.Respond(ctx, httpx.ResponseWriterWrapper{ResponseWriter: w})
 }
 
-func (res *ExcelFile) CommonRespond(ctx context.Context, w httpx.CommonResponseWriter) (int, error) {
-	header := w.Header()
-	header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
-	header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
-	n, err := res.File.WriteTo(w, res.Options...)
+func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) {
+	if wx, ok := w.(httpx.ResponseWriter); ok {
+		header := wx.HeaderX()
+		header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
+		header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
+	} else {
+		header := w.Header()
+		header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
+		header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
+	}
+	res.File.WriteTo(w, res.Options...)
 	res.File.Close()
-	return int(n), err
 }

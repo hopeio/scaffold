@@ -51,8 +51,8 @@ func ForwardResponseMessage(ctx context.Context, writer http.ResponseWriter, mes
 	var err error
 	switch rb := message.(type) {
 	case httpx.Responder:
-		_, err = rb.Respond(ctx, writer)
-		return err
+		rb.Respond(ctx, writer)
+		return nil
 	case httpx.ResponseBody:
 		buf = rb.ResponseBody()
 	case httpx.XXXResponseBody:

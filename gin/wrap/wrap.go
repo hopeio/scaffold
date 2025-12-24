@@ -18,7 +18,7 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
 		if err != nil {
-			httpx.RespondError(ctxi.Base(), ctx.Writer, errors.InvalidArgument.Msg(err.Error()))
+			httpx.RespondError(ctx.Writer, ctx.Request, errors.InvalidArgument.Msg(err.Error()))
 			return
 		}
 		var stream grpc_0.ServerTransportStream
@@ -26,13 +26,13 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 
 		res, reserr := service(ctxi.Wrapper(), req)
 		if reserr != nil {
-			httpx.RespondError(ctxi.Base(), ctx.Writer, reserr)
+			httpx.RespondError(ctx.Writer, ctx.Request, reserr)
 			return
 		}
-		if httpres, ok := any(res).(httpx.CommonResponder); ok {
-			httpres.CommonRespond(ctxi.Base(), httpx.ResponseWriterWrapper{ctx.Writer})
+		if httpres, ok := any(res).(httpx.Responder); ok {
+			httpres.Respond(ctxi.Base(), ctx.Writer)
 			return
 		}
-		httpx.RespondSuccess(ctxi.Base(), ctx.Writer, res)
+		httpx.RespondSuccess(ctx.Writer, ctx.Request, res)
 	}
 }
