@@ -1,6 +1,8 @@
 package wrap
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
@@ -29,8 +31,8 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 			httpx.RespondError(ctx.Writer, ctx.Request, reserr)
 			return
 		}
-		if httpres, ok := any(res).(httpx.Responder); ok {
-			httpres.Respond(ctxi.Base(), ctx.Writer)
+		if httpres, ok := any(res).(http.Handler); ok {
+			httpres.ServeHTTP(ctx.Writer, ctx.Request)
 			return
 		}
 		httpx.RespondSuccess(ctx.Writer, ctx.Request, res)
