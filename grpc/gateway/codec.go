@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Marshal(accept string, v any) ([]byte, string) {
+func Marshal(req any, v any) ([]byte, string) {
 	if p, ok := v.(proto.Message); ok {
 		data, err := proto.Marshal(p)
 		if err != nil {

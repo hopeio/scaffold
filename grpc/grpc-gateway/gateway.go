@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/log"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/grpc/gateway"
@@ -49,22 +50,28 @@ func New(opts ...runtime.ServeMuxOption) *runtime.ServeMux {
 func ForwardResponseMessage(ctx context.Context, writer http.ResponseWriter, message proto.Message) error {
 	var buf []byte
 	var err error
+	contentType := httpx.ContentTypeJson
 	switch rb := message.(type) {
+	case http.Handler:
+		if ctxx, ok := httpctx.FromContext(ctx); ok {
+			rb.ServeHTTP(ctxx.ReqCtx.ResponseWriter, ctxx.ReqCtx.Request)
+			return nil
+		}
 	case httpx.Responder:
 		rb.Respond(ctx, writer)
 		return nil
 	case httpx.ResponseBody:
-		buf = rb.ResponseBody()
+		buf, contentType = rb.ResponseBody()
 	case httpx.XXXResponseBody:
 		buf, err = JsonPb.Marshal(rb.XXX_ResponseBody())
 	default:
 		buf, err = JsonPb.Marshal(message)
 	}
-
 	if err != nil {
 		log.Infof("Marshal error: %v", err)
 		return err
 	}
+	writer.Header().Set(httpx.HeaderContentType, contentType)
 
 	if _, err = writer.Write(buf); err != nil {
 		log.Infof("Failed to write response: %v", err)

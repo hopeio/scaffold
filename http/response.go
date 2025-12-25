@@ -16,7 +16,7 @@ type ExcelFile struct {
 }
 
 func (res *ExcelFile) ServeHTTP(ctx context.Context, w http.ResponseWriter) {
-	res.Respond(ctx, httpx.ResponseWriterWrapper{ResponseWriter: w})
+	res.Respond(ctx, w)
 }
 
 func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) {

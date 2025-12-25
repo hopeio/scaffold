@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -32,14 +33,15 @@ func init() {
 			Msg:  s.Message(),
 		}
 
-		buf, contentType := gatewayx.DefaultMarshal(ctx.GetHeader(httpx.HeaderAccept), message)
+		buf, contentType := gatewayx.DefaultMarshal(ctx, message)
 
 		ctx.Header(httpx.HeaderContentType, contentType)
-		if ww, ok := ctx.Writer.(httpx.Unwrapper); ok {
-			ow := ww.Unwrap()
-			if recorder, ok := ow.(httpx.RecordBody); ok {
-				recorder.RecordBody(buf, message)
-			}
+		ow := ctx.Writer.(http.ResponseWriter)
+		if uw, ok := ctx.Writer.(httpx.Unwrapper); ok {
+			ow = uw.Unwrap()
+		}
+		if recorder, ok := ow.(httpx.RecordBody); ok {
+			recorder.RecordBody(buf, message)
 		}
 		ctx.Writer.Write(buf)
 	}
