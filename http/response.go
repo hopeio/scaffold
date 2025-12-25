@@ -19,7 +19,7 @@ func (res *ExcelFile) ServeHTTP(ctx context.Context, w http.ResponseWriter) {
 	res.Respond(ctx, w)
 }
 
-func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) {
+func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) (int, error) {
 	if wx, ok := w.(httpx.ResponseWriter); ok {
 		header := wx.HeaderX()
 		header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
@@ -29,6 +29,7 @@ func (res *ExcelFile) Respond(ctx context.Context, w http.ResponseWriter) {
 		header.Set(httpx.HeaderContentType, httpx.ContentTypeOctetStream)
 		header.Set(httpx.HeaderContentDisposition, fmt.Sprintf(httpx.AttachmentTmpl, res.Name))
 	}
-	res.File.WriteTo(w, res.Options...)
+	n, err := res.File.WriteTo(w, res.Options...)
 	res.File.Close()
+	return int(n), err
 }

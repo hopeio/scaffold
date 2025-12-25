@@ -1,13 +1,15 @@
 package gateway
 
 import (
+	"context"
+	
 	jsonx "github.com/hopeio/gox/encoding/json"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
 	"google.golang.org/protobuf/proto"
 )
 
-func Marshal(req any, v any) ([]byte, string) {
+func Marshal(ctx context.Context, v any) ([]byte, string) {
 	if p, ok := v.(proto.Message); ok {
 		data, err := proto.Marshal(p)
 		if err != nil {
