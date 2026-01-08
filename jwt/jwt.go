@@ -15,7 +15,7 @@ type authorization[A reqctx.AuthInfo] struct {
 }
 
 func (x *authorization[A]) UnmarshalJSON(data []byte) error {
-	x.AuthInfoRaw = strings.BytesToString(data)
+	x.AuthInfoRaw = strings.FromBytes(data)
 	return json.Unmarshal(data, &x.Claims)
 }
 
