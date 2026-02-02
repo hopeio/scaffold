@@ -2,6 +2,7 @@ package errcode
 
 import (
 	errors "errors"
+	"fmt"
 	io "io"
 
 	strings "github.com/hopeio/gox/strings"
@@ -66,7 +67,7 @@ func (x ErrCode) Comment() string {
 }
 
 func (x ErrCode) MarshalGQL(w io.Writer) {
-	w.Write(strings.SimpleQuoteToBytes(x.String()))
+	w.Write(strings.ToBytes(fmt.Sprintf(`"%s"`, x.String())))
 }
 
 func (x *ErrCode) UnmarshalGQL(v interface{}) error {

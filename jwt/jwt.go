@@ -6,16 +6,15 @@ import (
 	"reflect"
 
 	"github.com/hopeio/gox/context/reqctx"
-	"github.com/hopeio/gox/strings"
 )
 
-type authorization[A reqctx.AuthInfo] struct {
+type authorization[A reqctx.Auth] struct {
 	Claims[A]
-	AuthInfoRaw string `json:"-"`
+	Raw []byte `json:"-"`
 }
 
 func (x *authorization[A]) UnmarshalJSON(data []byte) error {
-	x.AuthInfoRaw = strings.FromBytes(data)
+	x.Raw = data
 	return json.Unmarshal(data, &x.Claims)
 }
 
@@ -34,14 +33,15 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 	return nil
 }
 
-func Auth[REQ reqctx.ReqCtx, A reqctx.AuthInfo](ctx *reqctx.Context[REQ], secret []byte) (*Claims[A], error) {
+func Auth[REQ reqctx.ReqCtx, A reqctx.Auth](ctx *reqctx.Context[REQ], secret []byte) (*Claims[A], error) {
 	authorization := authorization[A]{}
-	if err := authorization.ParseToken(ctx.Token, secret); err != nil {
+	ctxAuth := ctx.Auth()
+	if err := authorization.ParseToken(ctxAuth.Token, secret); err != nil {
 		return nil, err
 	}
-	authInfo := authorization.Auth
-	ctx.AuthID = authorization.ID
-	ctx.AuthInfo = authInfo
-	ctx.AuthRaw = authorization.AuthInfoRaw
+	ctxAuth.Raw = authorization.Raw
+	ctxAuth.ID = authorization.ID
+	ctxAuth.Info = authorization.Auth
+
 	return &authorization.Claims, nil
 }
