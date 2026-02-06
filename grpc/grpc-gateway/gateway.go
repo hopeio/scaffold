@@ -30,7 +30,7 @@ func New(opts ...runtime.ServeMuxOption) *runtime.ServeMux {
 			if err != nil {
 				area = ""
 			}
-			var token = httpx.GetToken(req)
+			var token = httpx.GetToken(req.Header)
 			return metadata.MD{
 				httpx.HeaderArea:          {area},
 				httpx.HeaderDeviceInfo:    {req.Header.Get(httpx.HeaderDeviceInfo)},

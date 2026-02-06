@@ -1,14 +1,15 @@
 package jwt
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"reflect"
 
-	"github.com/hopeio/gox/context/reqctx"
+	httpx "github.com/hopeio/gox/net/http"
 )
 
-type authorization[A reqctx.Auth] struct {
+type authorization[A httpx.Auth] struct {
 	Claims[A]
 	Raw []byte `json:"-"`
 }
@@ -33,7 +34,7 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 	return nil
 }
 
-func Auth[REQ reqctx.ReqCtx, A reqctx.Auth](ctx *reqctx.Context[REQ], secret []byte) (*Claims[A], error) {
+func Auth[A httpx.Auth](ctx context.Context, secret []byte) (*Claims[A], error) {
 	authorization := authorization[A]{}
 	ctxAuth := ctx.Auth()
 	if err := authorization.ParseToken(ctxAuth.Token, secret); err != nil {
