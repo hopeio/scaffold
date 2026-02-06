@@ -21,7 +21,7 @@ var marshalErr, _ = proto.Marshal(&response.ErrResp{
 })
 
 func init() {
-	gatewayx.DefaultMarshal = Marshal
+	gatewayx.DefaultMarshal = ProtobufMarshal
 	gateway.HttpError = func(ctx *gin.Context, err error) {
 		s, _ := status.FromError(err)
 		delete(ctx.Request.Header, httpx.HeaderTrailer)
