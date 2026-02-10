@@ -257,8 +257,11 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hopeio/gox v1.7.18 h1:dEjD10S+4/uPf+pfdq3j/0xVr1o54Mk4FID5hffPRsA=
 github.com/hopeio/gox v1.7.18/go.mod h1:jlxjRRDoRXJAvejlbBwTskcUnd53jNESeEet4s7j3aw=
+github.com/hopeio/gox v1.8.0/go.mod h1:jlxjRRDoRXJAvejlbBwTskcUnd53jNESeEet4s7j3aw=
 github.com/hopeio/protobuf v0.7.21 h1:kfRdkVYc5f3/FhUOjaARAarNE5YcNaoHFEZk2Y1S2yA=
 github.com/hopeio/protobuf v0.7.21/go.mod h1:gE8Pf5ao8vgLdAwEnZUfRc98Zv1wZNTgi9Vpb/yTN9Q=
+github.com/hopeio/protobuf v0.7.22 h1:qmjzUbtWbSULMT2qlp7RoBZJcouwanSb18gOPVCgxss=
+github.com/hopeio/protobuf v0.7.22/go.mod h1:pmfXKsf2Yt02HfmA8Y9vq7En7nl9rDLFPeX+SSLR04o=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hudl/fargo v1.3.0/go.mod h1:y3CKSmjA+wD2gak7sUSXTAoopbhU08POFhmITJgmKTg=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=

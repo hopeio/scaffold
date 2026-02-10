@@ -8,8 +8,11 @@ package context
 
 import (
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
+
+	httpx "github.com/hopeio/gox/net/http"
 )
 
 // DeviceInfo device info
@@ -23,6 +26,13 @@ type DeviceInfo struct {
 	Lat       float64 `json:"lat" gorm:"type:numeric(10,6)"`
 	Area      string  `json:"area" gorm:"size:255"`
 	UserAgent string  `json:"userAgent" gorm:"size:255"`
+}
+
+func DeviceFromHeader(header http.Header) *DeviceInfo {
+	return Device(header.Get(httpx.HeaderDeviceInfo), header.Get(httpx.HeaderAppInfo),
+		header.Get(httpx.HeaderArea), header.Get(httpx.HeaderLocation),
+		header.Get(httpx.HeaderUserAgent), header.Get(httpx.HeaderXForwardedFor))
+
 }
 
 // Device get device info

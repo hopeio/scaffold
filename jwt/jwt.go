@@ -6,20 +6,24 @@ import (
 	"errors"
 	"reflect"
 
-	httpx "github.com/hopeio/gox/net/http"
+	contextx "github.com/hopeio/cherry"
 )
 
-type authorization[A httpx.Auth] struct {
+type AuthInfo interface {
+	GetId() string
+}
+
+type ClaimsWithRaw[A AuthInfo] struct {
 	Claims[A]
 	Raw []byte `json:"-"`
 }
 
-func (x *authorization[A]) UnmarshalJSON(data []byte) error {
+func (x *ClaimsWithRaw[A]) UnmarshalJSON(data []byte) error {
 	x.Raw = data
 	return json.Unmarshal(data, &x.Claims)
 }
 
-func (x *authorization[A]) ParseToken(token string, secret []byte) error {
+func (x *ClaimsWithRaw[A]) ParseToken(token string, secret []byte) error {
 	_, err := ParseToken(x, token, secret)
 	if err != nil {
 		return err
@@ -34,15 +38,17 @@ func (x *authorization[A]) ParseToken(token string, secret []byte) error {
 	return nil
 }
 
-func Auth[A httpx.Auth](ctx context.Context, secret []byte) (*Claims[A], error) {
-	authorization := authorization[A]{}
-	ctxAuth := ctx.Auth()
-	if err := authorization.ParseToken(ctxAuth.Token, secret); err != nil {
+func Auth[A AuthInfo](ctx context.Context, secret []byte) (*Claims[A], error) {
+	authorization := ClaimsWithRaw[A]{}
+	metadata := contextx.GetMetadata(ctx)
+	if metadata == nil {
+		return nil, errors.New("no metadata")
+	}
+	if err := authorization.ParseToken(metadata.Token, secret); err != nil {
 		return nil, err
 	}
-	ctxAuth.Raw = authorization.Raw
-	ctxAuth.ID = authorization.ID
-	ctxAuth.Info = authorization.Auth
+	metadata.AuthRaw = authorization.Raw
+	metadata.AuthID = authorization.ID
 
 	return &authorization.Claims, nil
 }

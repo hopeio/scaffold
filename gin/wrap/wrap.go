@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hopeio/gox/context/httpctx"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
 	grpc_0 "github.com/hopeio/gox/net/http/grpc"
@@ -16,7 +15,6 @@ import (
 
 func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctxi := httpctx.FromRequest(ctx.Writer, ctx.Request)
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
 		if err != nil {
@@ -26,7 +24,7 @@ func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.Ha
 		var stream grpc_0.ServerTransportStream
 		ctx.Request = ctx.Request.WithContext(grpc.NewContextWithServerTransportStream(metadata.NewIncomingContext(ctx.Request.Context(), metadata.MD(ctx.Request.Header)), &stream))
 
-		res, reserr := service(ctxi.Wrapper(), req)
+		res, reserr := service(ctx, req)
 		if reserr != nil {
 			httpx.ServeError(ctx.Writer, ctx.Request, reserr)
 			return
