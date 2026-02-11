@@ -6,7 +6,7 @@ import (
 	"errors"
 	"reflect"
 
-	contextx "github.com/hopeio/cherry"
+	"github.com/hopeio/cherry"
 )
 
 type AuthInfo interface {
@@ -40,7 +40,7 @@ func (x *ClaimsWithRaw[A]) ParseToken(token string, secret []byte) error {
 
 func Auth[A AuthInfo](ctx context.Context, secret []byte) (*Claims[A], error) {
 	authorization := ClaimsWithRaw[A]{}
-	metadata := contextx.GetMetadata(ctx)
+	metadata := cherry.GetMetadata(ctx)
 	if metadata == nil {
 		return nil, errors.New("no metadata")
 	}
