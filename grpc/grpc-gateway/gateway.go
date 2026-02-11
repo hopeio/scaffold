@@ -12,7 +12,7 @@ import (
 	"net/url"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hopeio/gox/context/httpctx"
+	"github.com/hopeio/cherry"
 	"github.com/hopeio/gox/log"
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/grpc/gateway"
@@ -53,8 +53,8 @@ func ForwardResponseMessage(ctx context.Context, writer http.ResponseWriter, mes
 	contentType := httpx.ContentTypeJson
 	switch rb := message.(type) {
 	case http.Handler:
-		if ctxx, ok := httpctx.FromContext(ctx); ok {
-			rb.ServeHTTP(ctxx.ReqCtx.ResponseWriter, ctxx.ReqCtx.Request)
+		if md := cherry.GetMetadata(ctx); md != nil {
+			rb.ServeHTTP(md.ResponseWriter, md.Request)
 			return nil
 		}
 	case httpx.Responder:
