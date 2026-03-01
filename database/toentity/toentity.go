@@ -115,7 +115,7 @@ func Convert(c ConvertInterface, filename string) {
 		buf.Write(genTable(c, tables[i], decl))
 		buf.Write(TwoLine())
 	}
-	fs.WriteReader(&buf, filename)
+	fs.WriteFile(filename,&buf)
 }
 
 func ConvertByTable(c ConvertInterface, tableName string) {
@@ -125,7 +125,7 @@ func ConvertByTable(c ConvertInterface, tableName string) {
 	buf.Write(genTable(c, tableName, decl))
 	buf.Write(TwoLine())
 
-	fs.WriteReader(&buf, tableName+".go")
+	fs.WriteFile(tableName+".go",&buf)
 }
 
 func genTable(c ConvertInterface, tableName string, decl *ast.GenDecl) []byte {
