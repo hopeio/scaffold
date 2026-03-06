@@ -17,9 +17,9 @@ import (
 	"go.opentelemetry.io/otel/log/global"
 )
 
-// setupOTelSDK bootstraps the OpenTelemetry pipeline.
+// SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -55,7 +55,7 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 		return nil, err
 	}
 
-	tracerProvider, err := newTraceProvider(res)
+	tracerProvider, err := newTraceProvider(ctx,res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -65,7 +65,7 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(res)
+	meterProvider, err := newMeterProvider(ctx,res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -74,7 +74,7 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	loggerProvider, err := newLoggerProvider(res)
+	loggerProvider, err := newLoggerProvider(ctx,res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -93,8 +93,8 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTraceProvider(res *resource.Resource) (*sdktrace.TracerProvider, error) {
-	traceExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithInsecure())
+func newTraceProvider(ctx context.Context,res *resource.Resource) (*sdktrace.TracerProvider, error) {
+	traceExporter, err := otlptracehttp.New(ctx, otlptracehttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -106,10 +106,10 @@ func newTraceProvider(res *resource.Resource) (*sdktrace.TracerProvider, error) 
 	), nil
 }
 
-func newMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context,res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 
 	options := []sdkmetric.Option{sdkmetric.WithResource(res)}
-	reader, err := otlpmetrichttp.New(context.Background(), otlpmetrichttp.WithInsecure())
+	reader, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ func newMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 	return sdkmetric.NewMeterProvider(options...), nil
 }
 
-func newLoggerProvider(res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	logExporter, err := otlploghttp.New(context.Background(), otlploghttp.WithInsecure())
+func newLoggerProvider(ctx context.Context,res *resource.Resource) (*sdklog.LoggerProvider, error) {
+	logExporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}

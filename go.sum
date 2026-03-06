@@ -263,6 +263,8 @@ github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/J
 github.com/hopeio/gox v1.7.18 h1:dEjD10S+4/uPf+pfdq3j/0xVr1o54Mk4FID5hffPRsA=
 github.com/hopeio/gox v1.7.18/go.mod h1:jlxjRRDoRXJAvejlbBwTskcUnd53jNESeEet4s7j3aw=
 github.com/hopeio/gox v1.8.0/go.mod h1:jlxjRRDoRXJAvejlbBwTskcUnd53jNESeEet4s7j3aw=
+github.com/hopeio/gox v1.8.2 h1:NdW0CMCCvD7tQ7SyzzPWwqKSipV/RDN8URKgZ7mFzt0=
+github.com/hopeio/gox v1.8.2/go.mod h1:5g08OxNXPkPlqzriDDQh8p3HhuJ15t1mnCh/43+lplA=
 github.com/hopeio/protobuf v0.7.21 h1:kfRdkVYc5f3/FhUOjaARAarNE5YcNaoHFEZk2Y1S2yA=
 github.com/hopeio/protobuf v0.7.21/go.mod h1:gE8Pf5ao8vgLdAwEnZUfRc98Zv1wZNTgi9Vpb/yTN9Q=
 github.com/hopeio/protobuf v0.7.22 h1:qmjzUbtWbSULMT2qlp7RoBZJcouwanSb18gOPVCgxss=
@@ -499,6 +501,8 @@ go.opencensus.io v0.20.2/go.mod h1:6WKK9ahsWS3RSO+PY9ZHZUfv2irvY6gN279GOPZjmmk=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
+go.opentelemetry.io/contrib/bridges/otelzap v0.16.0 h1:sJ13RB8i3O3vBO62as3JbpodT/VZyJ4jTqNPquZrUWQ=
+go.opentelemetry.io/contrib/bridges/otelzap v0.16.0/go.mod h1:w3nrQCEr4xvu416OwMXtK9AhFgWcnp0b8mpKDd3o29U=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 h1:RbKq8BG0FI8OiXhBfcRtqqHcZcka+gU3cskNuf05R18=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0/go.mod h1:h06DGIukJOevXaj/xrNjhi/2098RZzcLTbc0jDAUbsg=
 go.opentelemetry.io/otel v1.38.0 h1:RkfdswUDRimDg0m2Az18RKOsnI8UDzppJAtj01/Ymk8=
