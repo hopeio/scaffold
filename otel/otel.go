@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hopeio/gox/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	sdklog "go.opentelemetry.io/otel/sdk/log"
 
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/log/global"
 )
 
@@ -82,7 +83,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
-
+	log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
 	return
 }
 
