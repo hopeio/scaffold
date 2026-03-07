@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/hopeio/gox/log"
+	//"github.com/hopeio/gox/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 )
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
@@ -83,7 +84,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
-	log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
+	//log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
 	return
 }
 
@@ -120,13 +121,18 @@ func newMeterProvider(ctx context.Context,res *resource.Resource) (*sdkmetric.Me
 }
 
 func newLoggerProvider(ctx context.Context,res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	logExporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure())
+	var exporter sdklog.Exporter
+	var err error
+	exporter, err = otlploghttp.New(ctx, otlploghttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-
+  	exporter, err = stdoutlog.New()
+    if err != nil {
+        return nil, err
+    }
 	loggerProvider := sdklog.NewLoggerProvider(
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
 		sdklog.WithResource(res),
 	)
 	return loggerProvider, nil
