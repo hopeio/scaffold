@@ -3,8 +3,11 @@ package otel
 import (
 	"context"
 	"errors"
+	"log"
+	"time"
 
 	//"github.com/hopeio/gox/log"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -16,12 +19,11 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 )
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -41,99 +43,86 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 		err = errors.Join(inErr, shutdown(ctx))
 	}
 
-	propagator := newPropagator()
-	// Set up Propagator.
-	otel.SetTextMapPropagator(propagator)
-	var res *resource.Resource
-	res, err = resource.New(
-		ctx, resource.WithFromEnv(), // Discover and provide attributes from OTEL_RESOURCE_ATTRIBUTES and OTEL_SERVICE_NAME environment variables.
-		resource.WithTelemetrySDK(), // Discover and provide information about the OpenTelemetry SDK used.
-		resource.WithProcess(),      // Discover and provide process information.
-		resource.WithOS(),           // Discover and provide OS information.
-		resource.WithContainer(),    // Discover and provide container information.
-		resource.WithHost())         // Discover and provide host information.
+	newPropagator()
 
-	if err != nil {
-		return nil, err
-	}
-
-	tracerProvider, err := newTraceProvider(ctx,res)
+	tracerProvider, err := newTraceProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return
 	}
-
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
-	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx,res)
+	meterProvider, err := newMeterProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return
 	}
 
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	otel.SetMeterProvider(meterProvider)
 
-	loggerProvider, err := newLoggerProvider(ctx,res)
+	loggerProvider, err := newLoggerProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return
 	}
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
-	global.SetLoggerProvider(loggerProvider)
+
 	//log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
 	return
 }
 
-func newPropagator() propagation.TextMapPropagator {
-	return propagation.NewCompositeTextMapPropagator(
+func newPropagator() {
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
-	)
+	))
 }
 
-func newTraceProvider(ctx context.Context,res *resource.Resource) (*sdktrace.TracerProvider, error) {
+func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	traceExporter, err := otlptracehttp.New(ctx, otlptracehttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 
-	return sdktrace.NewTracerProvider(
+	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithSampler(sdktrace.TraceIDRatioBased(0.1)),
-	), nil
+	)
+	otel.SetTracerProvider(tracerProvider)
+	return tracerProvider, nil
 }
 
-func newMeterProvider(ctx context.Context,res *resource.Resource) (*sdkmetric.MeterProvider, error) {
-
-	options := []sdkmetric.Option{sdkmetric.WithResource(res)}
+func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	reader, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-	options = append(options, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(reader)))
-
-	return sdkmetric.NewMeterProvider(options...), nil
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(res),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(reader, sdkmetric.WithInterval(10*time.Second))),
+	)
+	otel.SetMeterProvider(meterProvider)
+	if err := runtime.Start(
+		runtime.WithMeterProvider(meterProvider), // 显式指定 provider (可选，如果不传则用全局)
+		runtime.WithMinimumReadMemStatsInterval(15*time.Second), // 调整采集频率
+	); err != nil {
+		log.Fatalf("failed to start runtime instrumentation: %v", err)
+	}
+	return meterProvider, nil
 }
 
-func newLoggerProvider(ctx context.Context,res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	var exporter sdklog.Exporter
-	var err error
-	exporter, err = otlploghttp.New(ctx, otlploghttp.WithInsecure())
+func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
+	exporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-  	exporter, err = stdoutlog.New()
-    if err != nil {
-        return nil, err
-    }
 	loggerProvider := sdklog.NewLoggerProvider(
 		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
 		sdklog.WithResource(res),
 	)
+	global.SetLoggerProvider(loggerProvider)
 	return loggerProvider, nil
 }
