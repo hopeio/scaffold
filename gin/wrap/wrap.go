@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func HandlerWrapGRPC[REQ, RES any](service types.GrpcService[*REQ, *RES]) gin.HandlerFunc {
+func HandlerWrapGRPC[REQ, RESP any](service types.GrpcService[*REQ, *RESP]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)

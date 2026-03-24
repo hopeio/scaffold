@@ -15,7 +15,7 @@ func ProtobufMarshal(ctx context.Context, v any) ([]byte, string) {
 			data = []byte(err.Error())
 			return data, httpx.ContentTypeText
 		}
-		return data, httpx.ContentTypeProtobuf
+		return data, httpx.ContentTypeXProtobuf
 	}
 	return JsonMarshal(ctx, v)
 }

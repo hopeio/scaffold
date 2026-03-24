@@ -11,12 +11,13 @@ require (
 	github.com/grafana/loki-client-go v0.0.0-20251015150631-c42bbddc310a
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
-	github.com/hopeio/cherry v1.20.29
-	github.com/hopeio/gox v1.8.3
-	github.com/hopeio/protobuf v0.7.24
+	github.com/hopeio/cherry v1.20.32
+	github.com/hopeio/gox v1.9.1
+	github.com/hopeio/protobuf v0.7.26
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.4
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
 	go.opentelemetry.io/otel v1.42.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.41.0
