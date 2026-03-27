@@ -43,6 +43,10 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 		err = errors.Join(inErr, shutdown(ctx))
 	}
 
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		log.Printf("[OTel SDK Error] %v", err)
+	}))
+
 	newPropagator()
 
 	tracerProvider, err := newTraceProvider(ctx, res)
