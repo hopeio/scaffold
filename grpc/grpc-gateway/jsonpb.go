@@ -14,18 +14,18 @@ import (
 	"github.com/hopeio/gox/net/http/grpc/gateway"
 )
 
-var JsonPb = &JSONPb{}
+var JsonPb = &JsonCodec{}
 
-type JSONPb struct {
-	gateway.Json
+type JsonCodec struct {
+	gateway.JsonCodec
 }
 
 // NewDecoder returns a runtime.Decoder which reads JSON stream from "r".
-func (j *JSONPb) NewDecoder(r io.Reader) runtime.Decoder {
+func (j *JsonCodec) NewDecoder(r io.Reader) runtime.Decoder {
 	return json.NewDecoder(r)
 }
 
 // NewEncoder returns an Encoder which writes JSON stream into "w".
-func (j *JSONPb) NewEncoder(w io.Writer) runtime.Encoder {
+func (j *JsonCodec) NewEncoder(w io.Writer) runtime.Encoder {
 	return json.NewEncoder(w)
 }

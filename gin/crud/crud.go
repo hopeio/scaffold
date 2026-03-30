@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"reflect"
 
-	clausex "github.com/hopeio/gox/database/sql/gorm/clause"
+	gormx "github.com/hopeio/gox/database/sql/gorm"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
 	responsex "github.com/hopeio/gox/types/response"
@@ -60,7 +60,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
-		if err = db.Clauses(clausex.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
+		if err = db.Clauses(gormx.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
 			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
@@ -130,10 +130,10 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			return
 		}
 		var list []*T
-		if clause := clausex.PaginationExpr(req.Pagination.No, req.Pagination.Size); clause != nil {
+		if clause := gormx.PaginationExpr(req.Pagination.No, req.Pagination.Size); clause != nil {
 			db = db.Clauses(clause)
 		}
-		if clause := clausex.SortExpr(nil, req.Sort...); clause != nil {
+		if clause := gormx.SortExpr(nil, req.Sort...); clause != nil {
 			db = db.Clauses(clause)
 		}
 		if err = db.Count(&count).Error; err != nil {
