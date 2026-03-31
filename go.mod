@@ -11,9 +11,9 @@ require (
 	github.com/grafana/loki-client-go v0.0.0-20251015150631-c42bbddc310a
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
-	github.com/hopeio/cherry v1.20.36
-	github.com/hopeio/gox v1.10.2
-	github.com/hopeio/protobuf v0.7.29
+	github.com/hopeio/cherry v1.20.37
+	github.com/hopeio/gox v1.10.3
+	github.com/hopeio/protobuf v0.7.30
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.4
