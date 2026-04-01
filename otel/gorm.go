@@ -3,9 +3,9 @@ package otel
 import (
 	"strings"
 
+	gormx "github.com/hopeio/gox/database/sql/gorm"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	gormx "github.com/hopeio/gox/database/sql/gorm"
 )
 
 type SlowSQLMetric struct {
@@ -42,10 +42,10 @@ func (m *SlowSQLMetric) Record(rc *gormx.RecordContext) {
 }
 
 func sqlVerb(rc *gormx.RecordContext) string {
-	if rc == nil || rc.Tx == nil || rc.Tx.Statement == nil {
+	if rc == nil || rc.DB == nil || rc.DB.Statement == nil {
 		return ""
 	}
-	sql := strings.TrimSpace(rc.Tx.Statement.SQL.String())
+	sql := strings.TrimSpace(rc.DB.Statement.SQL.String())
 	if sql == "" {
 		return ""
 	}
