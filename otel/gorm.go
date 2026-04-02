@@ -6,6 +6,7 @@ import (
 	gormx "github.com/hopeio/gox/database/sql/gorm"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel"
 )
 
 type SlowSQLMetric struct {
@@ -21,7 +22,8 @@ func NewSlowSQLMetric(thresholdMs float64) *SlowSQLMetric {
 	return &SlowSQLMetric{ThresholdMs: thresholdMs}
 }
 
-func (m *SlowSQLMetric) Init(meter metric.Meter) error {
+func (m *SlowSQLMetric) Init() error {
+	meter := otel.GetMeterProvider().Meter(ScopeName)
 	var err error
 	m.counter, err = meter.Int64Counter("gorm.db.slow_sql.requests")
 	if err != nil {

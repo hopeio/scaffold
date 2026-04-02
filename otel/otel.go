@@ -21,6 +21,8 @@ import (
 	"go.opentelemetry.io/otel/log/global"
 )
 
+const ScopeName = "github.com/hopeio/scaffold"
+
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(context.Context) error, err error) {
