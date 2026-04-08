@@ -40,7 +40,7 @@ func init() {
 		if uw, ok := ctx.Writer.(httpx.Unwrapper); ok {
 			ow = uw.Unwrap()
 		}
-		if recorder, ok := ow.(httpx.RecordBody); ok {
+		if recorder, ok := ow.(httpx.RecordBodyer); ok {
 			recorder.RecordBody(buf, message)
 		}
 		ctx.Writer.Write(buf)
