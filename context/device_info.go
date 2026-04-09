@@ -80,7 +80,7 @@ func Device(device, app, area, location, userAgent, ip string) *DeviceInfo {
 	// area:xxx
 	if area != "" {
 		unknow = false
-		info.Area, _ = url.PathUnescape(area)
+		info.Area, _ = url.QueryUnescape(area)
 	}
 	// location:1.23456,2.123456
 	if location != "" {

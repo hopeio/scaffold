@@ -26,7 +26,7 @@ func New(opts ...runtime.ServeMuxOption) *runtime.ServeMux {
 	opts = append([]runtime.ServeMuxOption{
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &JsonCodec{}),
 		runtime.WithMetadata(func(ctx context.Context, req *http.Request) metadata.MD {
-			area, err := url.PathUnescape(req.Header.Get(httpx.HeaderArea))
+			area, err := url.QueryUnescape(req.Header.Get(httpx.HeaderArea))
 			if err != nil {
 				area = ""
 			}
