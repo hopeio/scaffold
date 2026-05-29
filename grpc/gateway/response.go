@@ -8,7 +8,7 @@ import (
 	httpx "github.com/hopeio/gox/net/http"
 	"github.com/hopeio/gox/net/http/grpc"
 	gatewayx "github.com/hopeio/gox/net/http/grpc/gateway"
-	"github.com/hopeio/protobuf/grpc/gateway"
+	"github.com/hopeio/protobuf/tools/protoc-gen-grpc-gin/gateway"
 	"github.com/hopeio/protobuf/response"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
