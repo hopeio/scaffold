@@ -6,25 +6,9 @@
 
 package model
 
-import (
-	"github.com/hopeio/gox/types/model"
-	"gorm.io/gorm"
-)
-
 type Cursor struct {
-	model.Cursor
-	ModelTime
-}
-
-func GetCursor(db *gorm.DB, typ string) (*Cursor, error) {
-	var cursor Cursor
-	err := db.Where(`type = ?`, typ).First(&cursor).Error
-	if err != nil {
-		return nil, err
-	}
-	return &cursor, nil
-}
-
-func EndCallback(db *gorm.DB, typ string) {
-	db.Exec(`UPDATE cursor SET prev = next, cursor = '' WHERE type = '` + typ + `'`)
+	Type   string `json:"type" gorm:"primaryKey"`
+	Cursor string
+	Prev   string
+	Next   string
 }
