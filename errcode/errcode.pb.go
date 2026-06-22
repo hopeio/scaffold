@@ -12,8 +12,6 @@
 package errcode
 
 import (
-	_ "github.com/hopeio/protobuf/utils/enum"
-	_ "github.com/hopeio/protobuf/utils/patch"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
