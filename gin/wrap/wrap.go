@@ -6,14 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
-	grpc_0 "github.com/hopeio/gox/net/http/grpc"
 	"github.com/hopeio/gox/types"
-	"github.com/hopeio/protobuf/tools/protoc-gen-grpc-gin/gateway"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
+	gateway "github.com/hopeio/protobuf/tools/protoc-gen-gateway/gateway/gin"
 )
 
-func HandlerWrapGRPC[REQ, RESP any](service types.GrpcService[*REQ, *RESP]) gin.HandlerFunc {
+func HandlerWrapCommon[REQ, RESP any](service types.Service[*REQ, *RESP]) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := new(REQ)
 		err := gateway.Bind(ctx, req)
@@ -21,8 +18,6 @@ func HandlerWrapGRPC[REQ, RESP any](service types.GrpcService[*REQ, *RESP]) gin.
 			httpx.ServeError(ctx.Writer, ctx.Request, errors.InvalidArgument.Msg(err.Error()))
 			return
 		}
-		var stream grpc_0.ServerTransportStream
-		ctx.Request = ctx.Request.WithContext(grpc.NewContextWithServerTransportStream(metadata.NewIncomingContext(ctx.Request.Context(), metadata.MD(ctx.Request.Header)), &stream))
 
 		res, reserr := service(ctx, req)
 		if reserr != nil {

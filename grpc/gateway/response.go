@@ -6,10 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	httpx "github.com/hopeio/gox/net/http"
-	"github.com/hopeio/gox/net/http/grpc"
 	gatewayx "github.com/hopeio/gox/net/http/grpc/gateway"
-	"github.com/hopeio/protobuf/tools/protoc-gen-grpc-gin/gateway"
 	"github.com/hopeio/protobuf/response"
+	gateway "github.com/hopeio/protobuf/tools/protoc-gen-gateway/gateway/gin"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -45,12 +44,12 @@ func init() {
 		}
 		ctx.Writer.Write(buf)
 	}
-	gateway.ForwardResponseMessage = func(ctx *gin.Context, md grpc.ServerMetadata, message proto.Message) {
+	gateway.HandleResponseMessage = func(ctx *gin.Context, message proto.Message) {
 		if !message.ProtoReflect().IsValid() {
 			return
 		}
 
-		err := gatewayx.ForwardResponseMessage(ctx.Writer, ctx.Request, md, message, gatewayx.DefaultMarshal)
+		err := gatewayx.HandleResponseMessage(ctx.Writer, ctx.Request, message, gatewayx.DefaultMarshal)
 		if err != nil {
 			gateway.HttpError(ctx, err)
 			return
