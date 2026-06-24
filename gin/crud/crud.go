@@ -4,10 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	sqlx "github.com/hopeio/gox/database/sql"
 	"github.com/hopeio/gox/errors"
-	ginx "github.com/hopeio/gox/net/http/gin"
+	httpx "github.com/hopeio/gox/net/http"
 	response "github.com/hopeio/protobuf/response"
+	gateway "github.com/hopeio/protobuf/tools/protoc-gen-gateway/gateway/gin"
 	"github.com/hopeio/scaffold/errcode"
-
 	"log"
 	"net/http"
 	"reflect"
@@ -32,16 +32,16 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
 	cu := append(middleware, func(c *gin.Context) {
 		var data T
-		err := ginx.Bind(c, &data)
+		err := gateway.Bind(c, &data)
 		if err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Save(&data).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, nil)
+		Respond(c, nil)
 	})
 	url := apiPrefix + typ
 	server.POST(url, cu...)
@@ -55,16 +55,16 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	url = apiPrefix + typ + "/:id"
 	server.PUT(url, append(middleware, func(c *gin.Context) {
 		var data T
-		err := ginx.Bind(c, &data)
+		err := gateway.Bind(c, &data)
 		if err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err = db.Clauses(gormx.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, nil)
+		Respond(c, nil)
 	})...)
 	Log(http.MethodPut, url, "update "+typ)
 }
@@ -75,24 +75,24 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	url := apiPrefix + typ + "/:id"
 	server.DELETE(url, append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, nil)
+		Respond(c, nil)
 	})...)
 	Log(http.MethodDelete, url, "delete "+typ)
 
 	handler := append(middleware, func(c *gin.Context) {
 		var m map[string]any
 		if err := c.ShouldBindJSON(&m); err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, nil)
+		Respond(c, nil)
 	})
 	url = apiPrefix + typ
 	server.DELETE(url, handler...)
@@ -109,10 +109,10 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
-			ginx.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
-		ginx.Respond(c, data)
+		Respond(c, data)
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
@@ -124,9 +124,9 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var count int64
 		var req sqlx.List
-		err := ginx.Bind(c, &req)
+		err := gateway.Bind(c, &req)
 		if err != nil {
-			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T
@@ -137,17 +137,17 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			db = db.Clauses(clause)
 		}
 		if err = db.Count(&count).Error; err != nil {
-			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
+			Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if err = db.Find(&list).Error; err != nil {
-			ginx.Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
+			Respond(c, &response.ErrResp{Code: int32(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		if count == 0 {
 			count = int64(len(list))
 		}
-		ginx.Respond(c, &responsex.List[*T]{List: list, Total: uint(count)})
+		Respond(c, &responsex.List[*T]{List: list, Total: uint(count)})
 	})...)
 	Log(http.MethodGet, url, "get "+typ)
 }
@@ -157,4 +157,12 @@ func Log(method, path, title string) {
 		style.Green("API:"),
 		style.Yellow(stringsx.FormatLen(method, 6)),
 		style.Blue(stringsx.FormatLen(path, 50)), style.Magenta(title))
+}
+
+func Respond(ctx *gin.Context, v any) {
+	if err, ok := v.(error); ok {
+		httpx.ServeError(ctx.Writer, ctx.Request, err)
+		return
+	}
+	httpx.ServeSuccess(ctx.Writer, ctx.Request, v)
 }
