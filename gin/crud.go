@@ -35,7 +35,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Save(&data).Error; err != nil {
@@ -58,7 +58,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err = db.Clauses(gormx.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
@@ -86,7 +86,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	handler := append(middleware, func(c *gin.Context) {
 		var m map[string]any
 		if err := c.ShouldBindJSON(&m); err != nil {
-			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
@@ -127,7 +127,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var req sqlx.List
 		err := gateway.Bind(c, &req)
 		if err != nil {
-			Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
+			Respond(c, &response.ErrResp{Code: int32(errors.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T

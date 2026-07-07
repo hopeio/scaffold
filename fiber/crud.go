@@ -41,7 +41,7 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err := db.Save(&data).Error; err != nil {
@@ -63,7 +63,7 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err = db.Clauses(gormx.ByPrimaryKey(c.Params("id"))).Updates(&data).Error; err != nil {
@@ -93,7 +93,7 @@ func Delete[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) 
 	handler := append(middleware, func(c fiber.Ctx) error {
 		var m map[string]any
 		if err := c.Bind().JSON(&m); err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
@@ -136,7 +136,7 @@ func List[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var req sqlx.List
 		err := gateway.Bind(c, &req)
 		if err != nil {
-			gateway.Respond(c, &response.ErrResp{Code: int32(errcode.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &response.ErrResp{Code: int32(errors.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		var list []*T
