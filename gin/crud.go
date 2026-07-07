@@ -1,16 +1,17 @@
-package crud
+package gin
 
 import (
+	"log"
+	"net/http"
+	"reflect"
+
 	"github.com/gin-gonic/gin"
 	sqlx "github.com/hopeio/gox/database/sql"
 	"github.com/hopeio/gox/errors"
 	httpx "github.com/hopeio/gox/net/http"
+	gateway "github.com/hopeio/mix/gin"
 	response "github.com/hopeio/protobuf/response"
-	gateway "github.com/hopeio/protobuf/tools/protoc-gen-gateway/gateway/gin"
 	"github.com/hopeio/scaffold/errcode"
-	"log"
-	"net/http"
-	"reflect"
 
 	gormx "github.com/hopeio/gox/database/sql/gorm"
 	stringsx "github.com/hopeio/gox/strings"

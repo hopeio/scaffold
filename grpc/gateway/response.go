@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	httpx "github.com/hopeio/gox/net/http"
 	gatewayx "github.com/hopeio/gox/net/http/grpc/gateway"
+	gateway "github.com/hopeio/mix/gin"
 	"github.com/hopeio/protobuf/response"
-	gateway "github.com/hopeio/protobuf/tools/protoc-gen-gateway/gateway/gin"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -49,7 +49,7 @@ func init() {
 			return
 		}
 
-		err := gatewayx.HandleResponseMessage(ctx.Writer, ctx.Request, message, gatewayx.DefaultMarshal)
+		err := gatewayx.HandleResponseMessage(ctx.Writer, ctx.Request, message)
 		if err != nil {
 			gateway.HttpError(ctx, err)
 			return
