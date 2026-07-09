@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	sqlx "github.com/hopeio/gox/database/sql"
-	"github.com/hopeio/gox/errors"
-	gateway "github.com/hopeio/mix/gin"
+	gateway "github.com/hopeio/mix/contrib/gin"
 	response "github.com/hopeio/protobuf/response"
 	"github.com/hopeio/scaffold/errcode"
+	"github.com/hopeio/mix"
 
 	gormx "github.com/hopeio/gox/database/sql/gorm"
 	stringsx "github.com/hopeio/gox/strings"
@@ -34,11 +34,11 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Save(&data).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		gateway.Respond(c, nil)
@@ -57,11 +57,11 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err = db.Clauses(gormx.ByPrimaryKey(c.Param("id"))).Updates(&data).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		gateway.Respond(c, nil)
@@ -75,7 +75,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	url := apiPrefix + typ + "/:id"
 	server.DELETE(url, append(middleware, func(c *gin.Context) {
 		if err := db.Delete(&v, c.Param("id")).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		gateway.Respond(c, nil)
@@ -85,11 +85,11 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	handler := append(middleware, func(c *gin.Context) {
 		var m map[string]any
 		if err := c.ShouldBindJSON(&m); err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		gateway.Respond(c, nil)
@@ -109,7 +109,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 	server.GET(url, append(middleware, func(c *gin.Context) {
 		var data T
 		if err := db.First(&data, c.Param("id")).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return
 		}
 		gateway.Respond(c, data)
@@ -126,7 +126,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 		var req sqlx.List
 		err := gateway.Bind(c, &req)
 		if err != nil {
-			gateway.Respond(c, &response.ErrResp{Code: int32(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &response.ErrResp{Code: int32(mix.InvalidArgument), Msg: err.Error()})
 			return
 		}
 		var list []*T

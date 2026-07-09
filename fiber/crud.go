@@ -8,12 +8,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 	sqlx "github.com/hopeio/gox/database/sql"
 	gormx "github.com/hopeio/gox/database/sql/gorm"
-	"github.com/hopeio/gox/errors"
 	stringsx "github.com/hopeio/gox/strings"
 	"github.com/hopeio/gox/terminal/style"
 	responsex "github.com/hopeio/gox/types/response"
+	gateway "github.com/hopeio/mix/contrib/fiber"
+	"github.com/hopeio/mix"
 	response "github.com/hopeio/protobuf/response"
-	gateway "github.com/hopeio/mix/fiber"
 	"github.com/hopeio/scaffold/errcode"
 	"gorm.io/gorm"
 )
@@ -41,11 +41,11 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err := db.Save(&data).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return nil
 		}
 		gateway.Respond(c, nil)
@@ -63,11 +63,11 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var data T
 		err := gateway.Bind(c, &data)
 		if err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err = db.Clauses(gormx.ByPrimaryKey(c.Params("id"))).Updates(&data).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return nil
 		}
 		gateway.Respond(c, nil)
@@ -82,7 +82,7 @@ func Delete[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) 
 	url := apiPrefix + typ + "/:id"
 	registerRoute(server, http.MethodDelete, url, append(middleware, func(c fiber.Ctx) error {
 		if err := db.Delete(&v, c.Params("id")).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return nil
 		}
 		gateway.Respond(c, nil)
@@ -93,11 +93,11 @@ func Delete[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) 
 	handler := append(middleware, func(c fiber.Ctx) error {
 		var m map[string]any
 		if err := c.Bind().JSON(&m); err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(mix.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		if err := db.Delete(&v, m["id"]).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return nil
 		}
 		gateway.Respond(c, nil)
@@ -118,7 +118,7 @@ func Query[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	registerRoute(server, http.MethodGet, url, append(middleware, func(c fiber.Ctx) error {
 		var data T
 		if err := db.First(&data, c.Params("id")).Error; err != nil {
-			gateway.Respond(c, &errors.ErrResp{Code: errors.ErrCode(errcode.DBError), Msg: err.Error()})
+			gateway.Respond(c, &mix.ErrResp{Code: mix.ErrCode(errcode.DBError), Msg: err.Error()})
 			return nil
 		}
 		gateway.Respond(c, data)
@@ -136,7 +136,7 @@ func List[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 		var req sqlx.List
 		err := gateway.Bind(c, &req)
 		if err != nil {
-			gateway.Respond(c, &response.ErrResp{Code: int32(errors.InvalidArgument), Msg: err.Error()})
+			gateway.Respond(c, &response.ErrResp{Code: int32(mix.InvalidArgument), Msg: err.Error()})
 			return nil
 		}
 		var list []*T
