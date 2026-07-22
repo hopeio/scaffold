@@ -76,6 +76,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 
 	//log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
+	markBootstrapped()
 	return
 }
 
