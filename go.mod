@@ -104,7 +104,9 @@ require (
 	github.com/prometheus/prometheus v0.307.3 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.0 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.18.0 // indirect
 	github.com/redis/go-redis/extra/redisotel-native/v9 v9.18.0 // indirect
+	github.com/redis/go-redis/extra/redisotel/v9 v9.18.0 // indirect
 	github.com/redis/go-redis/v9 v9.18.0 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect

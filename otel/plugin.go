@@ -4,33 +4,35 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptrace"
+	"strings"
 
 	gormx "github.com/hopeio/gox/database/sql/gorm"
-	redisotel "github.com/redis/go-redis/extra/redisotel-native/v9"
+	redisotel "github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/stats"
 	"gorm.io/gorm"
 )
 
-// Plugin 公共 I/O OTel 插件：对各客户端统一挂载 tracing/metrics。
+// Plugin 通过各 client 原生插件/钩子挂载 OTel，不改动 initialize。
+//
+//	GORM  → db.Use(plugin)
+//	Redis → redisotel.InstrumentTracing / InstrumentMetrics（go-redis Hook）
+//	HTTP  → otelhttp.NewTransport / NewHandler
+//	gRPC  → otelgrpc StatsHandler
 type Plugin struct {
 	Config Config
 }
 
-// NewPlugin 创建插件；cfg.Active() 为 false 时各 Instrument 方法为 no-op。
-func NewPlugin(cfg Config) *Plugin {
-	return &Plugin{Config: cfg}
-}
+func NewPlugin(cfg Config) *Plugin { return &Plugin{Config: cfg} }
 
-// Default 使用默认 Config（跟随 SetupOTelSDK）。
-func Default() *Plugin {
-	return NewPlugin(Config{})
-}
+func Default() *Plugin { return NewPlugin(Config{}) }
 
 func (p *Plugin) active() bool {
 	if p == nil {
@@ -39,7 +41,7 @@ func (p *Plugin) active() bool {
 	return p.Config.Active()
 }
 
-// GORM 挂载 gox OTelPlugin + 慢 SQL metric。
+// GORM 使用 gorm.Plugin 钩子（Callback）。
 func (p *Plugin) GORM(db *gorm.DB) error {
 	if !p.active() || db == nil {
 		return nil
@@ -51,20 +53,18 @@ func (p *Plugin) GORM(db *gorm.DB) error {
 	return db.Use(gormx.NewOTelPlugin(gormx.WithCustomMetrics(slow)))
 }
 
-// Redis 使用 redisotel-native，复用全局 MeterProvider（由 SetupOTelSDK 设置）。
+// Redis 使用 go-redis Hook（InstrumentTracing / InstrumentMetrics）。
 func (p *Plugin) Redis(client redis.UniversalClient) error {
 	if !p.active() || client == nil {
 		return nil
 	}
-	inst := redisotel.GetObservabilityInstance()
-	if inst.IsEnabled() {
-		return nil
+	if err := redisotel.InstrumentTracing(client); err != nil {
+		return err
 	}
-	cfg := redisotel.NewConfig().WithEnabled(true).WithMeterProvider(otel.GetMeterProvider())
-	return inst.Init(cfg)
+	return redisotel.InstrumentMetrics(client)
 }
 
-// HTTPTransport 包装 RoundTripper（含 ClientTrace）。
+// HTTPTransport 包装 RoundTripper（otelhttp + ClientTrace）。
 func (p *Plugin) HTTPTransport(base http.RoundTripper, opts ...otelhttp.Option) http.RoundTripper {
 	if !p.active() {
 		return base
@@ -72,15 +72,14 @@ func (p *Plugin) HTTPTransport(base http.RoundTripper, opts ...otelhttp.Option) 
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	defaultOpts := []otelhttp.Option{
+	defaults := []otelhttp.Option{
 		otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
 			return otelhttptrace.NewClientTrace(ctx)
 		}),
 	}
-	return otelhttp.NewTransport(base, append(defaultOpts, opts...)...)
+	return otelhttp.NewTransport(base, append(defaults, opts...)...)
 }
 
-// HTTPClient 就地包装 http.Client.Transport。
 func (p *Plugin) HTTPClient(c *http.Client, opts ...otelhttp.Option) *http.Client {
 	if !p.active() || c == nil {
 		return c
@@ -89,7 +88,6 @@ func (p *Plugin) HTTPClient(c *http.Client, opts ...otelhttp.Option) *http.Clien
 	return c
 }
 
-// HTTPHandler 包装服务端 Handler。
 func (p *Plugin) HTTPHandler(h http.Handler, operation string, opts ...otelhttp.Option) http.Handler {
 	if !p.active() || h == nil {
 		return h
@@ -100,7 +98,6 @@ func (p *Plugin) HTTPHandler(h http.Handler, operation string, opts ...otelhttp.
 	return otelhttp.NewHandler(h, operation, opts...)
 }
 
-// GRPCServerHandler 返回 gRPC 服务端 StatsHandler。
 func (p *Plugin) GRPCServerHandler(opts ...otelgrpc.Option) stats.Handler {
 	if !p.active() {
 		return nil
@@ -108,7 +105,6 @@ func (p *Plugin) GRPCServerHandler(opts ...otelgrpc.Option) stats.Handler {
 	return otelgrpc.NewServerHandler(opts...)
 }
 
-// GRPCClientHandler 返回 gRPC 客户端 StatsHandler。
 func (p *Plugin) GRPCClientHandler(opts ...otelgrpc.Option) stats.Handler {
 	if !p.active() {
 		return nil
@@ -116,7 +112,6 @@ func (p *Plugin) GRPCClientHandler(opts ...otelgrpc.Option) stats.Handler {
 	return otelgrpc.NewClientHandler(opts...)
 }
 
-// GRPCDialOption 便于 Dial。
 func (p *Plugin) GRPCDialOption(opts ...otelgrpc.Option) grpc.DialOption {
 	h := p.GRPCClientHandler(opts...)
 	if h == nil {
@@ -125,11 +120,61 @@ func (p *Plugin) GRPCDialOption(opts ...otelgrpc.Option) grpc.DialOption {
 	return grpc.WithStatsHandler(h)
 }
 
-// GRPCServerOption 便于 NewServer。
 func (p *Plugin) GRPCServerOption(opts ...otelgrpc.Option) grpc.ServerOption {
 	h := p.GRPCServerHandler(opts...)
 	if h == nil {
 		return grpc.EmptyServerOption{}
 	}
 	return grpc.StatsHandler(h)
+}
+
+// SlowSQLMetric 作为 GORM CustomMetric 钩子。
+type SlowSQLMetric struct {
+	ThresholdMs float64
+	counter     metric.Int64Counter
+	histogram   metric.Float64Histogram
+}
+
+func NewSlowSQLMetric(thresholdMs float64) *SlowSQLMetric {
+	if thresholdMs <= 0 {
+		thresholdMs = 200
+	}
+	return &SlowSQLMetric{ThresholdMs: thresholdMs}
+}
+
+func (m *SlowSQLMetric) Init() error {
+	meter := otel.GetMeterProvider().Meter(ScopeName)
+	var err error
+	m.counter, err = meter.Int64Counter("gorm.db.slow_sql.requests")
+	if err != nil {
+		return err
+	}
+	m.histogram, err = meter.Float64Histogram("gorm.db.slow_sql.duration_ms", metric.WithUnit("ms"))
+	return err
+}
+
+func (m *SlowSQLMetric) Record(rc *gormx.RecordContext) {
+	if rc == nil || rc.DurationMs < m.ThresholdMs {
+		return
+	}
+	attrs := append(rc.Attrs, attribute.String("sql.verb", sqlVerb(rc)))
+	opt := metric.WithAttributes(attrs...)
+	m.counter.Add(rc.Ctx, 1, opt)
+	m.histogram.Record(rc.Ctx, rc.DurationMs, opt)
+}
+
+func sqlVerb(rc *gormx.RecordContext) string {
+	if rc == nil || rc.DB == nil || rc.DB.Statement == nil {
+		return ""
+	}
+	sql := strings.TrimSpace(rc.DB.Statement.SQL.String())
+	if sql == "" {
+		return ""
+	}
+	for i := 0; i < len(sql); i++ {
+		if sql[i] == ' ' || sql[i] == '\t' || sql[i] == '\n' {
+			return strings.ToUpper(sql[:i])
+		}
+	}
+	return strings.ToUpper(sql)
 }

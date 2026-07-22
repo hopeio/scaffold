@@ -10,7 +10,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// StartClientSpan 为出站 I/O（NSQ/MQTT/SMTP 等无官方 instrumentation 的客户端）开 span。
+// 以下助手用于没有官方 Hook/Plugin 的客户端（NSQ/MQTT 等），
+// 在业务 handler / publish 调用点手动包一层，而不是改 initialize。
+
 func StartClientSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -21,7 +23,6 @@ func StartClientSpan(ctx context.Context, spanName string, attrs ...attribute.Ke
 	)
 }
 
-// StartConsumerSpan 为消息消费开 span。
 func StartConsumerSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -32,7 +33,6 @@ func StartConsumerSpan(ctx context.Context, spanName string, attrs ...attribute.
 	)
 }
 
-// EndSpan 结束 span 并按 err 设置状态。
 func EndSpan(span trace.Span, err error) {
 	if span == nil {
 		return
@@ -46,7 +46,6 @@ func EndSpan(span trace.Span, err error) {
 	span.End()
 }
 
-// MessagingAttrs 构造 messaging 语义约定属性。
 func MessagingAttrs(system, destination, operation string) []attribute.KeyValue {
 	attrs := []attribute.KeyValue{
 		semconv.MessagingSystemKey.String(system),
@@ -58,7 +57,6 @@ func MessagingAttrs(system, destination, operation string) []attribute.KeyValue 
 	return attrs
 }
 
-// TraceClient 包装一次客户端调用。
 func TraceClient(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
 	ctx, span := StartClientSpan(ctx, spanName, attrs...)
 	err := fn(ctx)
@@ -66,7 +64,6 @@ func TraceClient(ctx context.Context, spanName string, attrs []attribute.KeyValu
 	return err
 }
 
-// TraceConsumer 包装一次消费处理。
 func TraceConsumer(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
 	ctx, span := StartConsumerSpan(ctx, spanName, attrs...)
 	err := fn(ctx)

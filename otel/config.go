@@ -2,16 +2,16 @@ package otel
 
 import "sync/atomic"
 
-// Config 公共 OTel 开关，可嵌入各 DAO Config。
+// Config 公共 OTel 开关（应用侧使用，不嵌入 initialize DAO）。
 //
 // 启用规则：
-//   - Disabled=true 时强制关闭
-//   - Enabled=true 时强制开启
-//   - 二者皆为 false 时，跟随 SetupOTelSDK 是否已成功引导
+//   - Disabled=true 强制关
+//   - Enabled=true 强制开
+//   - 皆 false 时跟随 SetupOTelSDK 是否已引导
 type Config struct {
 	Enabled   bool    `json:"enabled"`
 	Disabled  bool    `json:"disabled"`
-	SlowSQLMs float64 `json:"slow_sql_ms"` // GORM 慢 SQL 阈值（毫秒），0 用默认 200
+	SlowSQLMs float64 `json:"slow_sql_ms"`
 }
 
 func (c Config) Active() bool {
@@ -26,11 +26,6 @@ func (c Config) Active() bool {
 
 var bootstrapped atomic.Bool
 
-// IsBootstrapped 报告 SetupOTelSDK 是否已成功执行。
-func IsBootstrapped() bool {
-	return bootstrapped.Load()
-}
+func IsBootstrapped() bool { return bootstrapped.Load() }
 
-func markBootstrapped() {
-	bootstrapped.Store(true)
-}
+func markBootstrapped() { bootstrapped.Store(true) }
