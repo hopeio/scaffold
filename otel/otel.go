@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
 	"time"
 
 	//"github.com/hopeio/gox/log"
@@ -88,7 +89,11 @@ func newPropagator() {
 }
 
 func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
-	traceExporter, err := otlptracehttp.New(ctx, otlptracehttp.WithInsecure())
+	traceExporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
+		}),
+		otlptracehttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +111,11 @@ func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.Tr
 }
 
 func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
-	reader, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithInsecure())
+	reader, err := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
+		}),
+		otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +125,7 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 	)
 	otel.SetMeterProvider(meterProvider)
 	if err := runtime.Start(
-		runtime.WithMeterProvider(meterProvider), // 显式指定 provider (可选，如果不传则用全局)
+		runtime.WithMeterProvider(meterProvider),                // 显式指定 provider (可选，如果不传则用全局)
 		runtime.WithMinimumReadMemStatsInterval(15*time.Second), // 调整采集频率
 	); err != nil {
 		log.Fatalf("failed to start runtime instrumentation: %v", err)
@@ -125,7 +134,11 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 }
 
 func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	exporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure())
+	exporter, err := otlploghttp.New(ctx,
+		otlploghttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
+		}),
+		otlploghttp.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
