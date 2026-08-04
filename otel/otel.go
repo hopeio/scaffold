@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	//"github.com/hopeio/gox/log"
+	goxlog "github.com/hopeio/gox/log"
+	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -76,7 +77,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 
-	//log.SetDefaultLogger(log.NewOtelLogger(log.DefaultLogger().Name(),loggerProvider))
+	goxlog.SetDefaultLogger(goxlog.NewOtelLogger(goxlog.DefaultLogger().Name(), otelzap.WithLoggerProvider(loggerProvider)))
 	markBootstrapped()
 	return
 }
