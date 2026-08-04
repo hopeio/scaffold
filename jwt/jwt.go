@@ -38,13 +38,13 @@ func (x *ClaimsWithRaw[A]) ParseToken(token string, secret []byte) error {
 	return nil
 }
 
-func Auth[A AuthInfo](ctx context.Context, secret []byte) (*Claims[A], error) {
+func Auth[A AuthInfo](ctx context.Context, token string, secret []byte) (*Claims[A], error) {
 	authorization := ClaimsWithRaw[A]{}
 	metadata := mix.GetMetadata(ctx)
 	if metadata == nil {
 		return nil, errors.New("no metadata")
 	}
-	if err := authorization.ParseToken(metadata.Token, secret); err != nil {
+	if err := authorization.ParseToken(token, secret); err != nil {
 		return nil, err
 	}
 	metadata.AuthRaw = authorization.Raw
