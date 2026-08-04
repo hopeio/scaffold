@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hopeio/mix"
 )
 
@@ -121,5 +122,109 @@ func TestAuth_EmptyToken(t *testing.T) {
 	}
 	if errors.Is(err, ErrInvalidToken) {
 		// optional path
+	}
+}
+
+func TestSetOptions(t *testing.T) {
+	Parser = jwt.NewParser()
+	SetOptions(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+
+	secret := []byte("secret-key-32-bytes-long!!!!!!!!")
+	claims := NewClaims(&testAuth{ID: "opt-u1"}, int64(time.Hour), "rfv")
+	token, err := claims.GenerateToken(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out Claims[*testAuth]
+	if _, err := ParseToken(&out, token, secret); err != nil {
+		t.Fatalf("ParseToken after SetOptions: %v", err)
+	}
+}
+
+func TestGenerateToken_PackageLevel(t *testing.T) {
+	secret := []byte("secret-key-32-bytes-long!!!!!!!!")
+	now := time.Now()
+	rc := jwt.RegisteredClaims{
+		Subject:   "pkg-subject",
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(now),
+	}
+	token, err := GenerateToken(&rc, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out jwt.RegisteredClaims
+	if _, err := ParseToken(&out, token, secret); err != nil {
+		t.Fatal(err)
+	}
+	if out.Subject != "pkg-subject" {
+		t.Fatalf("subject=%q", out.Subject)
+	}
+}
+
+func TestParseTokenWithKeyFunc_Success(t *testing.T) {
+	secret := []byte("secret-key-32-bytes-long!!!!!!!!")
+	claims := NewClaims(&testAuth{ID: "keyfunc-u1"}, int64(time.Hour), "rfv")
+	token, err := claims.GenerateToken(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out Claims[*testAuth]
+	_, err = ParseTokenWithKeyFunc(&out, token, func(_ *jwt.Token) (interface{}, error) {
+		return secret, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Auth == nil || out.Auth.ID != "keyfunc-u1" {
+		t.Fatalf("auth=%+v", out.Auth)
+	}
+}
+
+func TestParseTokenWithKeyFunc_Failure(t *testing.T) {
+	secret := []byte("secret-key-32-bytes-long!!!!!!!!")
+	claims := NewClaims(&testAuth{ID: "keyfunc-u2"}, int64(time.Hour), "rfv")
+	token, err := claims.GenerateToken(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out Claims[*testAuth]
+	_, err = ParseTokenWithKeyFunc(&out, token, func(_ *jwt.Token) (interface{}, error) {
+		return []byte("wrong-secret-32-bytes-long!!!!!!"), nil
+	})
+	if err == nil {
+		t.Fatal("want error for wrong key from key func")
+	}
+
+	_, err = ParseTokenWithKeyFunc(&out, "not-a-jwt", func(_ *jwt.Token) (interface{}, error) {
+		return secret, nil
+	})
+	if err == nil {
+		t.Fatal("want error for malformed token")
+	}
+}
+
+func TestParseToken_Expired(t *testing.T) {
+	secret := []byte("secret-key-32-bytes-long!!!!!!!!")
+	past := time.Now().Add(-time.Hour)
+	c := &Claims[*testAuth]{
+		Auth: &testAuth{ID: "expired-u1"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(past),
+			IssuedAt:  jwt.NewNumericDate(past.Add(-time.Hour)),
+			Issuer:    "rfv",
+		},
+	}
+	token, err := c.GenerateToken(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out Claims[*testAuth]
+	_, err = ParseToken(&out, token, secret)
+	if err == nil {
+		t.Fatal("want error for expired token")
+	}
+	if !errors.Is(err, jwt.ErrTokenExpired) {
+		t.Fatalf("want jwt.ErrTokenExpired, got %v", err)
 	}
 }
