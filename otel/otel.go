@@ -24,7 +24,8 @@ const ScopeName = "github.com/hopeio/scaffold"
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(context.Context) error, err error) {
+// cfg.SampleRatio controls trace sampling; zero means never sample (set explicitly in config).
+func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -50,7 +51,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 
 	newPropagator()
 
-	tracerProvider, err := newTraceProvider(ctx, res)
+	tracerProvider, err := newTraceProvider(ctx, res, cfg)
 	if err != nil {
 		handleErr(err)
 		return
@@ -86,8 +87,8 @@ func newPropagator() {
 	))
 }
 
-// newTraceProvider creates and registers an OTLP HTTP trace provider with a 10% ratio sampler.
-func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
+// newTraceProvider creates and registers an OTLP HTTP trace provider using cfg.Sampler.
+func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdktrace.TracerProvider, error) {
 	traceExporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithInsecure())
 	if err != nil {
@@ -97,10 +98,7 @@ func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.Tr
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(traceExporter),
-		sdktrace.WithSampler(sdktrace.ParentBased(
-			sdktrace.TraceIDRatioBased(0.1),
-			sdktrace.WithRemoteParentNotSampled(sdktrace.NeverSample()),
-		)),
+		sdktrace.WithSampler(cfg.Sampler()),
 	)
 	otel.SetTracerProvider(tracerProvider)
 	return tracerProvider, nil
@@ -119,8 +117,8 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 	)
 	otel.SetMeterProvider(meterProvider)
 	if err := runtime.Start(
-		runtime.WithMeterProvider(meterProvider),                // 显式指定 provider (可选，如果不传则用全局)
-		runtime.WithMinimumReadMemStatsInterval(15*time.Second), // 调整采集频率
+		runtime.WithMeterProvider(meterProvider),
+		runtime.WithMinimumReadMemStatsInterval(15*time.Second),
 	); err != nil {
 		log.Fatalf("failed to start runtime instrumentation: %v", err)
 	}

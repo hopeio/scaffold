@@ -1,6 +1,10 @@
 package otel
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+)
 
 // Config is a common on/off switch that I/O plugins can embed or configure independently.
 // Disabled=true forces the plugin off; Enabled=true forces it on; both false follows SetupOTelSDK.
@@ -18,6 +22,34 @@ func (c Config) Active() bool {
 		return true
 	}
 	return IsBootstrapped()
+}
+
+// SDKConfig configures OpenTelemetry SDK bootstrap (trace sampling, etc.).
+type SDKConfig struct {
+	// SampleRatio is the fraction of traces to record, clamped to [0, 1].
+	// 1 = always sample, 0 = never sample. Default when unset in callers is 1.
+	SampleRatio float64
+}
+
+// Sampler returns a ParentBased sampler using SampleRatio for both roots and
+// remote parents that were not sampled. Without the latter, gateways that inject
+// traceparent with sampled=0 would suppress every span.
+func (c SDKConfig) Sampler() sdktrace.Sampler {
+	root := ratioSampler(c.SampleRatio)
+	return sdktrace.ParentBased(root,
+		sdktrace.WithRemoteParentNotSampled(root),
+	)
+}
+
+func ratioSampler(ratio float64) sdktrace.Sampler {
+	switch {
+	case ratio >= 1:
+		return sdktrace.AlwaysSample()
+	case ratio <= 0:
+		return sdktrace.NeverSample()
+	default:
+		return sdktrace.TraceIDRatioBased(ratio)
+	}
 }
 
 var bootstrapped atomic.Bool
