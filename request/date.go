@@ -16,13 +16,13 @@ type DateFilter struct {
 	Type  int       `json:"type" comment:"1-今天, 2-本周，3-本月，4-今年"`
 }
 
-// 赋值本周期，并返回下周期日期
+// Range resolves Begin/End from explicit values or the Type preset (1=today, 2=this week, 3=this month, 4=this year).
 func (d *DateFilter) Range() (time.Time, time.Time) {
 	var zero time.Time
 	if d.Begin != zero && d.End != zero {
 		return d.Begin, d.End
 	}
-	//如果传的是RangeEnum，截止日期都是这一天
+	// When using a preset type the end is always "now".
 	now := time.Now()
 	year, month, day := time.Now().Date()
 	d.End = now

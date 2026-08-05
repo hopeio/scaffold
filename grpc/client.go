@@ -16,10 +16,12 @@ import (
 )
 
 
+// NewClient creates a gRPC client connection with insecure transport credentials.
 func NewClient(addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	return grpc.NewClient(addr, append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))...)
 }
 
+// NewClientTLS creates a gRPC client connection with TLS, skipping server certificate verification.
 func NewClientTLS(addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	return grpc.NewClient(addr, append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: strings.Split(addr, ":")[0], InsecureSkipVerify: true})))...)
 }

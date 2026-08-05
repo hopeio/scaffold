@@ -8,6 +8,7 @@ package voidxss
 
 import "github.com/microcosm-cc/bluemonday"
 
+// UGCPolicy configures a bluemonday UGC sanitization policy extended to support common HTML email elements.
 func UGCPolicy() {
 	p := bluemonday.UGCPolicy()
 

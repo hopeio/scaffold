@@ -6,15 +6,11 @@ import (
     "go.opentelemetry.io/otel/semconv/v1.21.0" // 请根据你的实际版本调整
 )
 
-// 自定义采样器：错误请求全采样，其他按 1% 采样
+// CustomSampler always samples requests with HTTP status >= 400 and samples others at 1%.
 type CustomSampler struct{}
 
+// ShouldSample forces sampling for error responses (HTTP status >= 400) and applies 1% ratio otherwise.
 func (cs CustomSampler) ShouldSample(p trace.SamplingParameters) trace.SamplingResult {
-    // 1. 检查是否是根 Span，如果不是，通常继承父级决策
-    // 这里简化处理，主要演示核心逻辑
-
-    // 2. 检查 Span 属性，判断是否为错误请求
-    // 注意：在实际应用中，需要确保在采样决策前属性已被设置
     for _, attr := range p.Attributes {
         if attr.Key == semconv.HTTPStatusCodeKey {
             if attr.Value.Type() == attribute.INT64 && attr.Value.AsInt64() >= 400 {
@@ -25,7 +21,6 @@ func (cs CustomSampler) ShouldSample(p trace.SamplingParameters) trace.SamplingR
         }
     }
 
-    // 3. 非错误请求，按 1% 概率采样
     defaultSampler := trace.TraceIDRatioBased(0.01)
     return defaultSampler.ShouldSample(p)
 }

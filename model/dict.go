@@ -17,6 +17,7 @@ type Dict struct {
 }
 
 
+// DictGetValue looks up a single value from the dict table by type and key.
 func DictGetValue(db *gorm.DB, typ int, key string) (string, error) {
 	var value string
 	err := db.Table(`dict`).Select(`value`).Where(`type = ? AND key=?`, typ, key).Scan(&value).Error
@@ -26,6 +27,7 @@ func DictGetValue(db *gorm.DB, typ int, key string) (string, error) {
 	return value, nil
 }
 
+// DictSetValue updates the value in the dict table for the given type and key.
 func DictSetValue(db *gorm.DB, typ int, key, value string) error {
 	return db.Table(`dict`).Where(`type = ? AND key=?`, typ, key).UpdateColumn("value", value).Error
 }

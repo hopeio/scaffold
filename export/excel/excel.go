@@ -11,10 +11,12 @@ type NullString struct {
 	sql.Null[string]
 }
 
+// String returns the underlying string value, ignoring the null flag.
 func (n NullString) String() string {
 	return n.V
 }
 
+// Export writes sql.Rows to an Excel file at the given filename, using column names as the header row.
 func Export(rows *sql.Rows, filename string) error {
 	f := excelize.NewFile()
 	columns, err := rows.Columns()

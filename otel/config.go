@@ -2,14 +2,14 @@ package otel
 
 import "sync/atomic"
 
-// Config 通用开关；各 I/O 插件可内嵌或单独配置。
-//
-//	Disabled=true 强制关；Enabled=true 强制开；皆 false 则跟随 SetupOTelSDK。
+// Config is a common on/off switch that I/O plugins can embed or configure independently.
+// Disabled=true forces the plugin off; Enabled=true forces it on; both false follows SetupOTelSDK.
 type Config struct {
 	Enabled  bool `json:"enabled"`
 	Disabled bool `json:"disabled"`
 }
 
+// Active reports whether this plugin should be enabled given the current bootstrapping state.
 func (c Config) Active() bool {
 	if c.Disabled {
 		return false
@@ -24,4 +24,5 @@ var bootstrapped atomic.Bool
 
 func IsBootstrapped() bool { return bootstrapped.Load() }
 
+// markBootstrapped records that the OTel SDK has been fully initialized.
 func markBootstrapped() { bootstrapped.Store(true) }

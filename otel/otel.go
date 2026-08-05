@@ -78,6 +78,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 	return
 }
 
+// newPropagator installs a composite W3C TraceContext+Baggage text-map propagator globally.
 func newPropagator() {
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
@@ -85,6 +86,7 @@ func newPropagator() {
 	))
 }
 
+// newTraceProvider creates and registers an OTLP HTTP trace provider with a 10% ratio sampler.
 func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	traceExporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithInsecure())
@@ -104,6 +106,7 @@ func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.Tr
 	return tracerProvider, nil
 }
 
+// newMeterProvider creates an OTLP HTTP meter provider with a 10-second periodic reader and runtime metrics.
 func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	reader, err := otlpmetrichttp.New(ctx,
 		otlpmetrichttp.WithInsecure())
@@ -124,6 +127,7 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 	return meterProvider, nil
 }
 
+// newLoggerProvider creates an OTLP HTTP logger provider with batch log processing.
 func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
 	exporter, err := otlploghttp.New(ctx,
 		otlploghttp.WithInsecure())

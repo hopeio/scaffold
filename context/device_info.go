@@ -28,6 +28,7 @@ type DeviceInfo struct {
 	UserAgent string  `json:"userAgent" gorm:"size:255"`
 }
 
+// DeviceFromHeader extracts DeviceInfo from standard HTTP request headers.
 func DeviceFromHeader(header http.Header) *DeviceInfo {
 	return Device(header.Get(httpx.HeaderDeviceInfo), header.Get(httpx.HeaderAppInfo),
 		header.Get(httpx.HeaderArea), header.Get(httpx.HeaderLocation),

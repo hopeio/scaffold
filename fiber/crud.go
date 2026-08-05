@@ -20,6 +20,7 @@ import (
 
 const apiPrefix = "/api/"
 
+// registerRoute adds a route with the given method and path to a fiber router.
 func registerRoute(route fiber.Router, method, path string, handlers []fiber.Handler) {
 	args := make([]any, len(handlers))
 	for i, h := range handlers {
@@ -28,12 +29,14 @@ func registerRoute(route fiber.Router, method, path string, handlers []fiber.Han
 	route.Add([]string{method}, path, args[0], args[1:]...)
 }
 
+// CRUD registers Save, Query, and Delete routes for type T on the fiber app.
 func CRUD[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	Save[T](server, db, middleware...)
 	Query[T](server, db, middleware...)
 	Delete[T](server, db, middleware...)
 }
 
+// Save registers POST and PUT routes to create or update a record of type T.
 func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -76,6 +79,7 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	Log(http.MethodPut, url, "update "+typ)
 }
 
+// Delete registers DELETE and POST routes to remove a record of type T by ID or JSON body.
 func Delete[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -111,6 +115,7 @@ func Delete[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) 
 	Log(http.MethodPost, url, "delete "+typ)
 }
 
+// Query registers a GET route to fetch a single record of type T by ID.
 func Query[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -127,6 +132,7 @@ func Query[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	Log(http.MethodGet, url, "get "+typ)
 }
 
+// List registers a GET route to fetch a paginated, sorted list of type T.
 func List[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -163,6 +169,7 @@ func List[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	Log(http.MethodGet, url, "get "+typ)
 }
 
+// Log prints a colorized API registration summary to stdout.
 func Log(method, path, title string) {
 	log.Printf(" %s\t %s %s\t %s",
 		style.Green("API:"),

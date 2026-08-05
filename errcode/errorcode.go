@@ -40,6 +40,7 @@ const (
 	TimesTooMuch ErrCode = 30004
 )
 
+// init registers application-level error codes with human-readable names.
 func init() {
 	mix.RegisterErrCode(mix.ErrCode(SysError), "SysError")
 	mix.RegisterErrCode(mix.ErrCode(DBError), "DBError")

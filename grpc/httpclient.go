@@ -23,13 +23,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// HTTPClient 通过 HTTP/2 调用 gRPC 服务的轻量客户端，无需 gRPC-Go 运行时。
+// HTTPClient is a lightweight gRPC client that uses HTTP/2 directly, without the gRPC-Go runtime.
 type HTTPClient struct {
 	BaseURL string
 	Client  *http.Client
 }
 
-// NewHTTPClient 创建 gRPC 客户端，根据 baseURL scheme 自动选择 h2c 或 TLS。
+// NewHTTPClient creates an HTTPClient, automatically selecting h2c or TLS based on the baseURL scheme.
 func NewHTTPClient(baseURL string) *HTTPClient {
 	var transport http.RoundTripper
 	if strings.HasPrefix(baseURL, "http://") {
@@ -42,13 +42,13 @@ func NewHTTPClient(baseURL string) *HTTPClient {
 }
 
 
-// NewHTTPClientWithClient 使用自定义 http.Client 创建 gRPC 客户端。
+// NewHTTPClientWithClient creates an HTTPClient using the provided http.Client.
 func NewHTTPClientWithClient(baseURL string, client *http.Client) *HTTPClient {
 	return &HTTPClient{BaseURL: baseURL, Client: client}
 }
 
-// Call 通过 HTTP/2 调用 gRPC unary 方法。
-// method 格式: /package.Service/Method，如 /user.UserService/GetUser。
+// Call invokes a gRPC unary method over HTTP/2 without the gRPC-Go runtime.
+// method should be in the form /package.Service/Method, e.g. /user.UserService/GetUser.
 func Call[Req, Resp any, ReqPtr mix.ProtoMessage[Req], RespPtr mix.ProtoMessage[Resp]](
 	ctx context.Context,
 	c *HTTPClient,
@@ -60,7 +60,7 @@ func Call[Req, Resp any, ReqPtr mix.ProtoMessage[Req], RespPtr mix.ProtoMessage[
 		return nil, err
 	}
 
-	// 构建 gRPC length-prefixed 帧: 1 字节压缩标志 + 4 字节大端长度 + payload
+	// Build gRPC length-prefixed frame: 1-byte compression flag + 4-byte big-endian length + payload.
 	frame := make([]byte, 5+len(data))
 	frame[0] = 0 // 无压缩
 	binary.BigEndian.PutUint32(frame[1:5], uint32(len(data)))
@@ -85,7 +85,7 @@ func Call[Req, Resp any, ReqPtr mix.ProtoMessage[Req], RespPtr mix.ProtoMessage[
 		return nil, err
 	}
 
-	// 检查 gRPC trailer 状态
+	// Check the gRPC trailer status.
 	grpcStatus := resp.Trailer.Get(httpx.HeaderGrpcStatus)
 	if grpcStatus != "" && grpcStatus != "0" {
 		grpcMessage := resp.Trailer.Get(httpx.HeaderGrpcMessage)

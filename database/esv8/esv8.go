@@ -13,6 +13,8 @@ import (
 	esx "github.com/hopeio/gox/database/elasticsearch"
 )
 
+// GetResponseData reads and decodes an Elasticsearch API response body into T.
+// It closes the response body and returns an error for non-200 status codes.
 func GetResponseData[T any](response *esapi.Response, err error) (*T, error) {
 	defer response.Body.Close()
 	if err != nil {
@@ -33,10 +35,12 @@ func GetResponseData[T any](response *esapi.Response, err error) (*T, error) {
 	return &res, nil
 }
 
+// GetSearchResponseData decodes an Elasticsearch search response into a typed SearchResponse wrapper.
 func GetSearchResponseData[T any](response *esapi.Response, err error) (*esx.SearchResponse[T], error) {
 	return GetResponseData[esx.SearchResponse[T]](response, err)
 }
 
+// CreateDocument serializes obj as JSON and creates an Elasticsearch document with the given index and ID.
 func CreateDocument[T any](ctx context.Context, es *elasticsearch.Client, index, id string, obj T) error {
 	body, _ := jsonx.Marshal(obj)
 	esreq := esapi.CreateRequest{

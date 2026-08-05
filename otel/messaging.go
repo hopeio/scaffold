@@ -10,9 +10,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// 以下助手用于没有官方 Hook/Plugin 的客户端（NSQ/MQTT 等），
-// 在业务 handler / publish 调用点手动包一层，而不是改 initialize。
+// The helpers below are intended for clients without official hook/plugin support (e.g. NSQ, MQTT).
+// Wrap calls at the business handler or publish site rather than modifying the initialize layer.
 
+// StartClientSpan starts an OTel client-kind span with the given name and attributes.
 func StartClientSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -23,6 +24,7 @@ func StartClientSpan(ctx context.Context, spanName string, attrs ...attribute.Ke
 	)
 }
 
+// StartConsumerSpan starts an OTel consumer-kind span with the given name and attributes.
 func StartConsumerSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -33,6 +35,7 @@ func StartConsumerSpan(ctx context.Context, spanName string, attrs ...attribute.
 	)
 }
 
+// EndSpan records the error (if any), sets the span status, and ends the span.
 func EndSpan(span trace.Span, err error) {
 	if span == nil {
 		return
@@ -46,6 +49,7 @@ func EndSpan(span trace.Span, err error) {
 	span.End()
 }
 
+// MessagingAttrs returns standard OTel semantic convention attributes for a messaging operation.
 func MessagingAttrs(system, destination, operation string) []attribute.KeyValue {
 	attrs := []attribute.KeyValue{
 		semconv.MessagingSystemKey.String(system),
@@ -57,6 +61,7 @@ func MessagingAttrs(system, destination, operation string) []attribute.KeyValue 
 	return attrs
 }
 
+// TraceClient wraps fn in a client span, ending it with the returned error.
 func TraceClient(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
 	ctx, span := StartClientSpan(ctx, spanName, attrs...)
 	err := fn(ctx)
@@ -64,6 +69,7 @@ func TraceClient(ctx context.Context, spanName string, attrs []attribute.KeyValu
 	return err
 }
 
+// TraceConsumer wraps fn in a consumer span, ending it with the returned error.
 func TraceConsumer(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
 	ctx, span := StartConsumerSpan(ctx, spanName, attrs...)
 	err := fn(ctx)

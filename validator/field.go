@@ -12,6 +12,8 @@ const (
 	phonePattern = `^1[0-9]{10}$`
 )
 
+// PhoneOrMail detects whether input is a phone number, email address, or neither.
+// Returns Phone, Mail, or Unknown.
 func PhoneOrMail(input string) int {
 	phoneMatch, _ := regexp.MatchString(phonePattern, input)
 	if phoneMatch {
@@ -25,6 +27,7 @@ func PhoneOrMail(input string) int {
 	return Unknown
 }
 
+// IsPhone reports whether input matches the Chinese mobile phone number pattern.
 func IsPhone(input string) bool {
 	phoneMatch, _ := regexp.MatchString(phonePattern, input)
 	return phoneMatch

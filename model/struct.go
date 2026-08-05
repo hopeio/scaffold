@@ -1,6 +1,7 @@
 package model
 
-// 内部保留,{1,int8},{2,int16}...{x,uint8}...{x,uint64},{x,string}
+// Struct represents a dynamic struct definition stored in the database.
+// Kind codes: {1,int8},{2,int16},...,{x,uint8},...,{x,uint64},{x,string}.
 type Struct struct {
 	ID   uint   `json:"id" gorm:"primaryKey"`
 	Name string `json:"name" gorm:"comment:名称"`

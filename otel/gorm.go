@@ -10,17 +10,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// GORMPlugin 通过 db.Use(gorm.Plugin) 挂载 OTel。
+// GORMPlugin attaches OTel tracing and slow-SQL metrics to a GORM DB via db.Use.
 type GORMPlugin struct {
 	Config
-	SlowSQLMs float64 // 慢 SQL 阈值（毫秒），0 默认 200
+	SlowSQLMs float64 // slow SQL threshold in milliseconds; defaults to 200 when 0
 }
 
+// NewGORMPlugin creates a GORMPlugin from the given configuration.
 func NewGORMPlugin(cfg GORMPlugin) *GORMPlugin {
 	return &cfg
 }
 
-// Use 调用 db.Use，挂上 gox OTelPlugin + 慢 SQL metric。
+// Use calls db.Use to register the gox OTelPlugin together with the slow-SQL metric hook.
 func (p *GORMPlugin) Use(db *gorm.DB) error {
 	if p == nil || !p.Active() || db == nil {
 		return nil
@@ -38,6 +39,7 @@ type SlowSQLMetric struct {
 	histogram   metric.Float64Histogram
 }
 
+// NewSlowSQLMetric creates a SlowSQLMetric with the given threshold; defaults to 200 ms when ≤ 0.
 func NewSlowSQLMetric(thresholdMs float64) *SlowSQLMetric {
 	if thresholdMs <= 0 {
 		thresholdMs = 200
@@ -45,6 +47,7 @@ func NewSlowSQLMetric(thresholdMs float64) *SlowSQLMetric {
 	return &SlowSQLMetric{ThresholdMs: thresholdMs}
 }
 
+// Init registers the slow-SQL counter and histogram instruments with the global meter.
 func (m *SlowSQLMetric) Init() error {
 	meter := otel.GetMeterProvider().Meter(ScopeName)
 	var err error
@@ -56,6 +59,7 @@ func (m *SlowSQLMetric) Init() error {
 	return err
 }
 
+// Record emits counter and histogram measurements when the query duration exceeds the threshold.
 func (m *SlowSQLMetric) Record(rc *gormx.RecordContext) {
 	if rc == nil || rc.DurationMs < m.ThresholdMs {
 		return
@@ -66,6 +70,7 @@ func (m *SlowSQLMetric) Record(rc *gormx.RecordContext) {
 	m.histogram.Record(rc.Ctx, rc.DurationMs, opt)
 }
 
+// sqlVerb extracts the first SQL keyword (e.g. SELECT, INSERT) from the statement.
 func sqlVerb(rc *gormx.RecordContext) string {
 	if rc == nil || rc.DB == nil || rc.DB.Statement == nil {
 		return ""

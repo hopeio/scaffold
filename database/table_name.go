@@ -10,6 +10,8 @@ var (
 	tableName = [...]string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}
 )
 
+// TableName returns a sharded table name based on the numeric id.
+// IDs below 200,000,000 use the base name; higher IDs get a numeric suffix for horizontal sharding.
 func TableName(name string, id uint64) string {
 	if id < 2000_00000 {
 		return name

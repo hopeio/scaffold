@@ -41,6 +41,7 @@ var defaultMetricsRecord = func(reqTime time.Time, uri, method string, code int)
 	HttpDurations.With(labels).Observe(float64(t) / 1000)
 }
 
+// SetMetricsRecord overrides the default HTTP metrics recording function.
 func SetMetricsRecord(metricsRecord MetricsRecord) {
 	if metricsRecord != nil {
 		defaultMetricsRecord = metricsRecord
@@ -82,6 +83,7 @@ var HttpDurations = prometheus.NewSummaryVec(
 	[]string{"method", "uri"},
 )
 
+// init registers the default Prometheus metrics collectors and exposes the /metrics endpoint.
 func init() {
 	http.Handle("/metrics", promhttp.Handler())
 	prometheus.MustRegister(AccessCounter, QueueGauge, HttpDurationsHistogram, HttpDurations)

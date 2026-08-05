@@ -6,16 +6,17 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// MinIOPlugin 提供 OTel 包装的 HTTP Transport，用于 MinIO/S3 调用追踪。
+// MinIOPlugin provides an OTel-instrumented HTTP Transport for tracing MinIO/S3 calls.
 type MinIOPlugin struct {
 	Config
 }
 
+// NewMinIOPlugin creates a MinIOPlugin from the given configuration.
 func NewMinIOPlugin(cfg MinIOPlugin) *MinIOPlugin {
 	return &cfg
 }
 
-// WrapTransport 包装 http.RoundTripper，为 S3 调用创建 client span。
+// WrapTransport wraps base with an otelhttp transport that creates a client span for each S3 call.
 func (p *MinIOPlugin) WrapTransport(base http.RoundTripper) http.RoundTripper {
 	if p == nil || !p.Active() {
 		return base

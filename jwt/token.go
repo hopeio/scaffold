@@ -18,25 +18,26 @@ var (
 	ErrInvalidToken = errors.New("invalid token")
 )
 
+// SetOptions applies additional parser options to the global JWT Parser.
 func SetOptions(options ...jwt.ParserOption) {
 	for _, option := range options {
 		option(Parser)
 	}
 }
 
-// 如果只存一个id，jwt的意义在哪呢，跟session_id有什么区别
-// jwt应该存放一些用户不能更改的信息，所以不能全存在jwt里
-// 或者说用户每更改一次信息就刷新token（貌似可行）
-// 有泛型这里多好写
+// Claims holds typed authentication data alongside standard JWT registered claims.
+// The Auth field should store immutable user info; refresh the token whenever the user changes credentials.
 type Claims[T any] struct {
 	Auth T `json:"auth,omitempty"`
 	jwt.RegisteredClaims
 }
 
+// GenerateToken signs the claims with HS256 using the provided secret.
 func (c *Claims[T]) GenerateToken(secret interface{}) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(secret)
 }
 
+// NewClaims creates a Claims value with the given auth data, expiry duration (as time.Duration nanoseconds), and issuer.
 func NewClaims[T any](data T, maxAge int64, sign string) *Claims[T] {
 	now := time.Now()
 	exp := now.Add(time.Duration(maxAge))
@@ -50,18 +51,21 @@ func NewClaims[T any](data T, maxAge int64, sign string) *Claims[T] {
 	}
 }
 
+// GenerateToken signs arbitrary jwt.Claims with HS256 using the provided secret.
 func GenerateToken(claims jwt.Claims, secret interface{}) (string, error) {
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(secret)
 	return token, err
 }
 
+// ParseToken parses and validates a JWT string, populating claims on success.
 func ParseToken(claims jwt.Claims, token string, secret []byte) (*jwt.Token, error) {
 	return Parser.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return secret, nil
 	})
 }
 
+// ParseTokenWithKeyFunc parses a JWT using a custom key-lookup function.
 func ParseTokenWithKeyFunc(claims jwt.Claims, token string, f jwt.Keyfunc) (*jwt.Token, error) {
 	return Parser.ParseWithClaims(token, claims, f)
 }

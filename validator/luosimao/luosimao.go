@@ -13,7 +13,7 @@ import (
 	"github.com/hopeio/gox/net/http/client"
 )
 
-var Error = errors.New("人机识别验证失败")
+var Error = errors.New("captcha verification failed")
 
 type Result struct {
 	Error int    `json:"error"`
@@ -21,6 +21,7 @@ type Result struct {
 	Msg   string `json:"msg"`
 }
 
+// CheckError returns Error when the Luosimao verification result is not "success".
 func (l *Result) CheckError() error {
 	if l.Res != "success" {
 		return Error
@@ -28,10 +29,10 @@ func (l *Result) CheckError() error {
 	return nil
 }
 
-// Verify 对前端的验证码进行验证
+// Verify calls the Luosimao API to validate the captcha response token from the frontend.
 func Verify(reqURL, apiKey, response string) error {
 	if reqURL == "" || apiKey == "" {
-		// 没有配置LuosimaoAPIKey的话，就没有验证码功能
+		// captcha is disabled when no API key is configured
 		return nil
 	}
 	if response == "" {

@@ -21,12 +21,14 @@ import (
 
 const apiPrefix = "/api/"
 
+// CRUD registers Save, Query, and Delete routes for type T on the gin engine.
 func CRUD[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	Save[T](server, db, middleware...)
 	Query[T](server, db, middleware...)
 	Delete[T](server, db, middleware...)
 }
 
+// Save registers POST and PUT routes to create or update a record of type T.
 func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -69,6 +71,7 @@ func Save[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	Log(http.MethodPut, url, "update "+typ)
 }
 
+// Delete registers DELETE and POST routes to remove a record of type T by ID or JSON body.
 func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -102,6 +105,7 @@ func Delete[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFun
 	Log(http.MethodPost, url, "delete "+typ)
 }
 
+// Query registers a GET route to fetch a single record of type T by ID.
 func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -117,6 +121,7 @@ func Query[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc
 	Log(http.MethodGet, url, "get "+typ)
 }
 
+// List registers a GET route to fetch a paginated, sorted list of type T.
 func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc) {
 	var v T
 	typ := stringsx.LowerCaseFirst(reflect.TypeOf(&v).Elem().Name())
@@ -152,6 +157,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 	Log(http.MethodGet, url, "get "+typ)
 }
 
+// Log prints a colorized API registration summary to stdout.
 func Log(method, path, title string) {
 	log.Printf(" %s\t %s %s\t %s",
 		style.Green("API:"),
