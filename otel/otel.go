@@ -4,11 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
-	"os"
 	"time"
 
-	goxlog "github.com/hopeio/gox/log"
-	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -77,7 +74,6 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource) (shutdown func(co
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 
-	goxlog.SetDefaultLogger(goxlog.NewOtelLogger(goxlog.DefaultLogger().Name(), otelzap.WithLoggerProvider(loggerProvider)))
 	markBootstrapped()
 	return
 }
@@ -91,9 +87,6 @@ func newPropagator() {
 
 func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	traceExporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithHeaders(map[string]string{
-			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
-		}),
 		otlptracehttp.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -113,9 +106,6 @@ func newTraceProvider(ctx context.Context, res *resource.Resource) (*sdktrace.Tr
 
 func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	reader, err := otlpmetrichttp.New(ctx,
-		otlpmetrichttp.WithHeaders(map[string]string{
-			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
-		}),
 		otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -136,9 +126,6 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 
 func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
 	exporter, err := otlploghttp.New(ctx,
-		otlploghttp.WithHeaders(map[string]string{
-			"Authorization": "Basic " + os.Getenv("OTEL_HEADER_AUTHORIZATION"),
-		}),
 		otlploghttp.WithInsecure())
 	if err != nil {
 		return nil, err
