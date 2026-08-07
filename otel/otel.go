@@ -52,25 +52,14 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (s
 
 	newPropagator()
 
-	tracerProvider, err := newTraceProvider(ctx, res, cfg)
+	tracerProvider, stopProfiling, err := newTraceProvider(ctx, res, cfg)
 	if err != nil {
 		handleErr(err)
 		return
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
-
-	pyroCfg := cfg.Pyroscope.resolve(serviceNameFromResource(res))
-	if pyroCfg.Enabled {
-		otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tracerProvider))
-		profiler, perr := startPyroscope(pyroCfg)
-		if perr != nil {
-			handleErr(perr)
-			return
-		}
-		shutdownFuncs = append(shutdownFuncs, func(context.Context) error {
-			return profiler.Stop()
-		})
-		log.Printf("[OTel] pyroscope profiling → %s app=%s", pyroCfg.ServerAddress, pyroCfg.ApplicationName)
+	if stopProfiling != nil {
+		shutdownFuncs = append(shutdownFuncs, stopProfiling)
 	}
 
 	// Set up meter provider.
@@ -103,11 +92,13 @@ func newPropagator() {
 }
 
 // newTraceProvider creates and registers an OTLP HTTP trace provider using cfg.Sampler.
-func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdktrace.TracerProvider, error) {
+// When Pyroscope is enabled, wraps the provider with otel-profiling-go and starts pyroscope-go;
+// stopProfiling (if non-nil) must be registered for shutdown.
+func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
 	traceExporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	tracerProvider := sdktrace.NewTracerProvider(
@@ -115,8 +106,21 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithSampler(cfg.Sampler()),
 	)
-	otel.SetTracerProvider(tracerProvider)
-	return tracerProvider, nil
+
+	pyroCfg := cfg.Pyroscope.resolve(serviceNameFromResource(res))
+	if !pyroCfg.Enabled {
+		otel.SetTracerProvider(tracerProvider)
+		return tracerProvider, nil, nil
+	}
+
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tracerProvider))
+	profiler, err := startPyroscope(pyroCfg)
+	if err != nil {
+		_ = tracerProvider.Shutdown(ctx)
+		return nil, nil, err
+	}
+	log.Printf("[OTel] pyroscope profiling → %s app=%s", pyroCfg.ServerAddress, pyroCfg.ApplicationName)
+	return tracerProvider, func(context.Context) error { return profiler.Stop() }, nil
 }
 
 // newMeterProvider creates an OTLP HTTP meter provider with a 10-second periodic reader and runtime metrics.
