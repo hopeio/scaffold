@@ -7,12 +7,12 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/gofiber/fiber/v3 v3.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
-	github.com/hopeio/gox v1.11.8
+	github.com/grafana/otel-profiling-go v0.6.0
+	github.com/grafana/pyroscope-go v1.4.1
+	github.com/hopeio/gox v1.12.0
 	github.com/hopeio/mix v1.21.2
 	github.com/hopeio/protobuf v0.9.3
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/prometheus/client_golang v1.24.1
 	github.com/xuri/excelize/v2 v2.11.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.70.0
 	go.opentelemetry.io/otel v1.45.0
@@ -32,6 +32,8 @@ require (
 require (
 	github.com/alta/protopatch v0.5.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.23.0 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.11 // indirect
+	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
@@ -66,7 +68,6 @@ require (
 	github.com/gofiber/utils/v2 v2.4.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect

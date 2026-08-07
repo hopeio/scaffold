@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -57,6 +58,20 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (s
 		return
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
+
+	pyroCfg := cfg.Pyroscope.resolve(serviceNameFromResource(res))
+	if pyroCfg.Enabled {
+		otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tracerProvider))
+		profiler, perr := startPyroscope(pyroCfg)
+		if perr != nil {
+			handleErr(perr)
+			return
+		}
+		shutdownFuncs = append(shutdownFuncs, func(context.Context) error {
+			return profiler.Stop()
+		})
+		log.Printf("[OTel] pyroscope profiling → %s app=%s", pyroCfg.ServerAddress, pyroCfg.ApplicationName)
+	}
 
 	// Set up meter provider.
 	meterProvider, err := newMeterProvider(ctx, res)
