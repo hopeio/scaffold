@@ -85,6 +85,7 @@ type DeviceAppInfo struct {
 }
 
 // DeviceHardwareInfo 硬件画像。
+// CPU/GPU 型号因平台而异：能采则填；iOS 通常只能靠机型反查，device_info_plus 本身不提供。
 type DeviceHardwareInfo struct {
 	Manufacturer string   `json:"manufacturer" gorm:"size:128"`
 	Brand        string   `json:"brand" gorm:"size:128"`
@@ -93,11 +94,18 @@ type DeviceHardwareInfo struct {
 	DeviceName   string   `json:"deviceName" gorm:"size:255"`
 	Product      string   `json:"product" gorm:"size:128"`
 	Board        string   `json:"board" gorm:"size:128"`
-	Hardware     string   `json:"hardware" gorm:"size:128"`
+	Hardware     string   `json:"hardware" gorm:"size:128"` // Android Build.HARDWARE，常近似芯片平台
+	Chipset      string   `json:"chipset" gorm:"size:128"`  // SoC，如 snapdragon 8 gen 3 / Apple M2
 	Fingerprint  string   `json:"fingerprint" gorm:"size:512"`
 	Bootloader   string   `json:"bootloader" gorm:"size:128"`
 	DisplayID    string   `json:"displayId" gorm:"size:128"`
 	SerialNo     string   `json:"serialNo" gorm:"size:128"`
+	CPUVendor    string   `json:"cpuVendor" gorm:"size:64"`  // GenuineIntel / Apple / Qualcomm…
+	CPUModel     string   `json:"cpuModel" gorm:"size:255"`  // 如 Apple M2 Pro / Intel Core i7-12700H
+	CPUCores     int      `json:"cpuCores,omitempty"`        // 逻辑核；与 host.cpuCount 可同值
+	GPUVendor    string   `json:"gpuVendor" gorm:"size:128"` // Apple / Qualcomm / NVIDIA…
+	GPUModel     string   `json:"gpuModel" gorm:"size:255"`  // 如 Apple M2 / Adreno 740
+	GPURenderer  string   `json:"gpuRenderer" gorm:"size:255"` // WebGL UNMASKED_RENDERER 等原始串
 	IsPhysical   TriState `json:"isPhysical,omitempty" gorm:"type:smallint"`
 	IsLowRam     TriState `json:"isLowRam,omitempty" gorm:"type:smallint"`
 }
