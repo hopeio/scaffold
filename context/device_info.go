@@ -66,6 +66,7 @@ type DeviceInfo struct {
 	ID       DeviceIDInfo       `json:"id" gorm:"embedded;embeddedPrefix:id_"`
 	OS       DeviceOSInfo       `json:"os" gorm:"embedded;embeddedPrefix:os_"`
 	Host     DeviceHostInfo     `json:"host" gorm:"embedded;embeddedPrefix:host_"`
+	HostLive DeviceHostLiveInfo `json:"hostLive" gorm:"embedded;embeddedPrefix:host_live_"`
 	Network  DeviceNetworkInfo  `json:"network" gorm:"embedded;embeddedPrefix:net_"`
 	Web      DeviceWebInfo      `json:"web" gorm:"embedded;embeddedPrefix:web_"`
 
@@ -148,7 +149,7 @@ type DeviceOSInfo struct {
 }
 
 // DeviceHostInfo 相对稳定的主机画像（区域 / 语言 / 容量上限）。
-// 可用内存、剩余磁盘等采集时刻可变字段见 Live，不宜当设备指纹。
+// 可用内存、剩余磁盘等采集时刻可变字段见 DeviceInfo.HostLive，不宜当设备指纹。
 type DeviceHostInfo struct {
 	Locale       string `json:"locale" gorm:"size:64"`
 	Language     string `json:"language" gorm:"size:32"`
@@ -159,8 +160,6 @@ type DeviceHostInfo struct {
 	CPUFrequency int64  `json:"cpuFrequencyHz,omitempty"` // 标称/基准频率；DVFS 瞬时值勿填这里
 	RamMB        int64  `json:"ramMb,omitempty"`          // 物理内存总量
 	DiskTotalB   int64  `json:"diskTotalBytes,omitempty"` // 磁盘总量
-
-	Live DeviceHostLiveInfo `json:"live" gorm:"embedded;embeddedPrefix:live_"`
 }
 
 // DeviceHostLiveInfo 采集时刻可变快照（随进程/系统负载变化）。
@@ -183,20 +182,20 @@ type DeviceNetworkInfo struct {
 
 // DeviceWebInfo 浏览器 / WebView。
 type DeviceWebInfo struct {
-	UserAgent     string   `json:"userAgent" gorm:"size:512"`
-	Browser       string   `json:"browser" gorm:"size:64"`
-	BrowserVer    string   `json:"browserVer" gorm:"size:64"`
-	Engine        string   `json:"engine" gorm:"size:64"`
-	EngineVer     string   `json:"engineVer" gorm:"size:64"`
-	Vendor        string   `json:"vendor" gorm:"size:128"`
-	MaxTouchPts   int      `json:"maxTouchPoints,omitempty"`
-	ScreenWidth   int      `json:"screenWidth,omitempty"`
-	ScreenHeight  int      `json:"screenHeight,omitempty"`
-	PixelRatio    float64  `json:"pixelRatio,omitempty"`
-	ColorDepth    int      `json:"colorDepth,omitempty"`
-	DeviceMemoryG float64  `json:"deviceMemoryGb,omitempty"`
-	CookieEnabled TriState `json:"cookieEnabled,omitempty" gorm:"type:smallint"`
-	DoNotTrack    TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
+	UserAgent      string   `json:"userAgent" gorm:"size:512"`
+	Browser        string   `json:"browser" gorm:"size:64"`
+	BrowserVersion string   `json:"browserVersion" gorm:"size:64"`
+	Engine         string   `json:"engine" gorm:"size:64"`
+	EngineVersion  string   `json:"engineVersion" gorm:"size:64"`
+	Vendor         string   `json:"vendor" gorm:"size:128"`
+	MaxTouchPts    int      `json:"maxTouchPoints,omitempty"`
+	ScreenWidth    int      `json:"screenWidth,omitempty"`
+	ScreenHeight   int      `json:"screenHeight,omitempty"`
+	PixelRatio     float64  `json:"pixelRatio,omitempty"`
+	ColorDepth     int      `json:"colorDepth,omitempty"`
+	DeviceMemoryG  float64  `json:"deviceMemoryGb,omitempty"`
+	CookieEnabled  TriState `json:"cookieEnabled,omitempty" gorm:"type:smallint"`
+	DoNotTrack     TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
 }
 
 // DeviceInfoLite
@@ -286,7 +285,7 @@ func (d *DeviceInfo) Normalize() {
 		d.ID.AAID = d.ID.GAID
 	}
 	if d.Web.UserAgent == "" && d.Web.Browser != "" {
-		d.Web.UserAgent = strings.TrimSpace(d.Web.Browser + "/" + d.Web.BrowserVer)
+		d.Web.UserAgent = strings.TrimSpace(d.Web.Browser + "/" + d.Web.BrowserVersion)
 	}
 	if d.Host.Language == "" {
 		if d.Host.Languages != "" {

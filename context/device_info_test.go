@@ -94,7 +94,8 @@ func TestTriState(t *testing.T) {
 func TestHostLiveNested(t *testing.T) {
 	raw := []byte(`{
 		"platform":"macos",
-		"host":{"ramMb":16384,"diskTotalBytes":500000000000,"live":{"ramAvailMb":4096,"diskFreeBytes":100}}
+		"host":{"ramMb":16384,"diskTotalBytes":500000000000},
+		"hostLive":{"ramAvailMb":4096,"diskFreeBytes":100}
 	}`)
 	var info DeviceInfo
 	if err := json.Unmarshal(raw, &info); err != nil {
@@ -103,7 +104,7 @@ func TestHostLiveNested(t *testing.T) {
 	if info.Host.RamMB != 16384 || info.Host.DiskTotalB != 500000000000 {
 		t.Fatalf("static: %+v", info.Host)
 	}
-	if info.Host.Live.RamAvailMB != 4096 || info.Host.Live.DiskFreeB != 100 {
-		t.Fatalf("live: %+v", info.Host.Live)
+	if info.HostLive.RamAvailMB != 4096 || info.HostLive.DiskFreeB != 100 {
+		t.Fatalf("live: %+v", info.HostLive)
 	}
 }
