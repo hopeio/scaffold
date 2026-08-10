@@ -10,28 +10,16 @@ import (
 	"testing"
 )
 
-func TestDeviceLegacyCSV(t *testing.T) {
-	info := Device("Pixel 8,Android 14", "hoper,1.2.3", "上海", "121.5,31.2", "ua", "1.2.3.4")
-	if info == nil {
-		t.Fatal("nil")
-	}
-	if info.Device != "Pixel 8" || info.OS != "Android 14" {
-		t.Fatalf("device/os: %+v", info)
-	}
-	if info.AppCode != "hoper" || info.AppVer != "1.2.3" {
-		t.Fatalf("app: %+v", info)
-	}
-	if info.Lng != 121.5 || info.Lat != 31.2 {
-		t.Fatalf("loc: %+v", info)
-	}
-	if info.IP.String() != "1.2.3.4" {
-		t.Fatalf("ip: %v", info.IP)
-	}
-}
-
 func TestDeviceFromHeaderJSON(t *testing.T) {
 	h := http.Header{}
-	h.Set("Device-Info", `{"platform":"ios","clientKind":"mobile","modelName":"iPhone 16","osName":"iOS","osVersion":"18.0","appCode":"hoper","appVer":"2.0.0","deviceId":"idfv-1","arch":"arm64"}`)
+	h.Set("Device-Info", `{
+		"platform":"ios","clientKind":"mobile",
+		"modelName":"iPhone 16","osName":"iOS","osVersion":"18.0",
+		"appCode":"hoper","appVer":"2.0.0",
+		"idfv":"idfv-1","idfa":"idfa-1","did":"biz-did",
+		"aaid":"aaid-1","oaid":"oaid-1","imei":"860000000000001",
+		"mac":"AA:BB:CC:DD:EE:FF","arch":"arm64"
+	}`)
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
 	info := DeviceFromHeader(h)
 	if info == nil {
@@ -40,16 +28,36 @@ func TestDeviceFromHeaderJSON(t *testing.T) {
 	if info.Platform != PlatformIOS || info.ClientKind != ClientKindMobile {
 		t.Fatalf("platform: %+v", info)
 	}
-	if info.Device != "iPhone 16" {
-		t.Fatalf("normalized device: %q", info.Device)
+	if info.DisplayName() != "iPhone 16" {
+		t.Fatalf("display: %q", info.DisplayName())
 	}
-	if info.OS != "iOS 18.0" {
-		t.Fatalf("normalized os: %q", info.OS)
+	if info.OSDisplay() != "iOS 18.0" {
+		t.Fatalf("os: %q", info.OSDisplay())
 	}
-	if info.DeviceID != "idfv-1" || info.Arch != "arm64" {
-		t.Fatalf("ext fields: %+v", info)
+	if info.PrimaryDeviceNo() != "biz-did" {
+		t.Fatalf("primary: %q", info.PrimaryDeviceNo())
+	}
+	if info.IDFV != "idfv-1" || info.IDFA != "idfa-1" || info.OAID != "oaid-1" || info.AAID != "aaid-1" {
+		t.Fatalf("ids: %+v", info)
+	}
+	if info.IMEI != "860000000000001" || info.MAC != "AA:BB:CC:DD:EE:FF" {
+		t.Fatalf("imei/mac: %+v", info)
 	}
 	if info.IP.String() != "10.0.0.1" {
 		t.Fatalf("xff ip: %v", info.IP)
+	}
+}
+
+func TestDeviceFromHeaderEmpty(t *testing.T) {
+	if DeviceFromHeader(http.Header{}) != nil {
+		t.Fatal("expected nil")
+	}
+}
+
+func TestAAIDGAIDAlias(t *testing.T) {
+	info := &DeviceInfo{AAID: "x"}
+	info.Normalize()
+	if info.GAID != "x" {
+		t.Fatalf("gaid alias: %q", info.GAID)
 	}
 }
