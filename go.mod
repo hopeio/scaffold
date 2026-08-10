@@ -33,10 +33,12 @@ require (
 	github.com/alta/protopatch v0.5.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.23.0 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.11 // indirect
+	github.com/mattn/go-sqlite3 v1.14.49 // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
+	gorm.io/driver/sqlite v1.6.0 // indirect
 )
 
 require (

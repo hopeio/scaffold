@@ -3,7 +3,7 @@
  * Licensed under the MIT License that can be found in the LICENSE file.
  */
 
-package context
+package device
 
 import (
 	"encoding/json"

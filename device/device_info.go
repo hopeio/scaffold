@@ -4,7 +4,7 @@
  * @Created by jyb
  */
 
-package context
+package device
 
 import (
 	"encoding/json"
@@ -66,9 +66,9 @@ type DeviceInfo struct {
 	ID          DeviceIDInfo          `json:"id" gorm:"embedded;embeddedPrefix:id_"`
 	OS          DeviceOSInfo          `json:"os" gorm:"embedded;embeddedPrefix:os_"`
 	Host        DeviceHostInfo        `json:"host" gorm:"embedded;embeddedPrefix:host_"`
-	HostLive    DeviceHostLiveInfo    `json:"hostLive" gorm:"embedded;embeddedPrefix:host_live_"`
+	HostLive    DeviceHostLiveInfo    `json:"hostLive" gorm:"-"` // 实时变动，先不入库
 	Network     DeviceNetworkInfo     `json:"network" gorm:"embedded;embeddedPrefix:net_"`
-	NetworkLive DeviceNetworkLiveInfo `json:"networkLive" gorm:"embedded;embeddedPrefix:net_live_"`
+	NetworkLive DeviceNetworkLiveInfo `json:"networkLive" gorm:"-"` // 实时变动，先不入库
 	Web         DeviceWebInfo         `json:"web" gorm:"embedded;embeddedPrefix:web_"`
 
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
@@ -354,7 +354,7 @@ func firstNonEmpty(ss ...string) string {
 
 // DeviceFromHeader 从 Device-Info JSON 解析；并用 Area / Location / UA / XFF 补全。
 func DeviceFromHeader(header http.Header) *DeviceInfo {
-	info := parseDeviceJSON(header.Get(httpx.HeaderDeviceInfo))
+	info := DeviceFromJSON(header.Get(httpx.HeaderDeviceInfo))
 	if info == nil {
 		info = new(DeviceInfo)
 	}
@@ -391,7 +391,7 @@ func (d *DeviceInfo) Empty() bool {
 		d.NetworkLive.Lng == 0 && d.NetworkLive.Lat == 0
 }
 
-func parseDeviceJSON(raw string) *DeviceInfo {
+func DeviceFromJSON(raw string) *DeviceInfo {
 	s := strings.TrimSpace(raw)
 	if s == "" {
 		return nil
