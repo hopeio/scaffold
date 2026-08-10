@@ -147,7 +147,8 @@ type DeviceOSInfo struct {
 	Arch          string `json:"arch" gorm:"size:128"`
 }
 
-// DeviceHostInfo 主机资源 / 语言区域快照。
+// DeviceHostInfo 相对稳定的主机画像（区域 / 语言 / 容量上限）。
+// 可用内存、剩余磁盘等采集时刻可变字段见 Live，不宜当设备指纹。
 type DeviceHostInfo struct {
 	Locale       string `json:"locale" gorm:"size:64"`
 	Language     string `json:"language" gorm:"size:32"`
@@ -155,11 +156,17 @@ type DeviceHostInfo struct {
 	Timezone     string `json:"timezone" gorm:"size:64"`
 	Hostname     string `json:"hostname" gorm:"size:255"`
 	CPUCount     int    `json:"cpuCount,omitempty"`
-	CPUFrequency int64  `json:"cpuFrequencyHz,omitempty"`
-	RamMB        int64  `json:"ramMb,omitempty"`
-	RamAvailMB   int64  `json:"ramAvailMb,omitempty"`
-	DiskTotalB   int64  `json:"diskTotalBytes,omitempty"`
-	DiskFreeB    int64  `json:"diskFreeBytes,omitempty"`
+	CPUFrequency int64  `json:"cpuFrequencyHz,omitempty"` // 标称/基准频率；DVFS 瞬时值勿填这里
+	RamMB        int64  `json:"ramMb,omitempty"`          // 物理内存总量
+	DiskTotalB   int64  `json:"diskTotalBytes,omitempty"` // 磁盘总量
+
+	Live DeviceHostLiveInfo `json:"live" gorm:"embedded;embeddedPrefix:live_"`
+}
+
+// DeviceHostLiveInfo 采集时刻可变快照（随进程/系统负载变化）。
+type DeviceHostLiveInfo struct {
+	RamAvailMB int64 `json:"ramAvailMb,omitempty"`
+	DiskFreeB  int64 `json:"diskFreeBytes,omitempty"`
 }
 
 // DeviceNetworkInfo 网络 / 运营商 / 地理（含会话侧 IP）。
