@@ -35,6 +35,26 @@ const (
 	PlatformUnknown = "unknown"
 )
 
+// TriState 三态开关：未采集 / 否 / 是（避免 bool 零值与「未填」混淆）。
+type TriState int8
+
+const (
+	TriUnset TriState = 0
+	TriFalse TriState = 1
+	TriTrue  TriState = 2
+)
+
+func TriFromBool(v bool) TriState {
+	if v {
+		return TriTrue
+	}
+	return TriFalse
+}
+
+func (t TriState) IsTrue() bool  { return t == TriTrue }
+func (t TriState) IsFalse() bool { return t == TriFalse }
+func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
+
 // DeviceInfo 客户端环境信息：移动 / 桌面 / Web 全量字段。
 // 客户端通过 Device-Info 头传 JSON（与 json tag 对齐）；服务端可补 IP / UA / 地理位置头。
 type DeviceInfo struct {
@@ -64,31 +84,31 @@ type DeviceInfo struct {
 	Fingerprint  string `json:"fingerprint" gorm:"size:512"`
 	Bootloader   string `json:"bootloader" gorm:"size:128"`
 	DisplayID    string `json:"displayId" gorm:"size:128"`
-	SerialNo     string `json:"serialNo" gorm:"size:128"`
-	IsPhysical   *bool  `json:"isPhysical,omitempty"`
-	IsLowRam     *bool  `json:"isLowRam,omitempty"`
+	SerialNo     string   `json:"serialNo" gorm:"size:128"`
+	IsPhysical   TriState `json:"isPhysical,omitempty" gorm:"type:smallint"`
+	IsLowRam     TriState `json:"isLowRam,omitempty" gorm:"type:smallint"`
 
 	// —— 设备 / 广告标识（能采到什么填什么；权限受限时留空）——
-	DID          string `json:"did" gorm:"size:128"`          // 业务侧设备号
-	UUID         string `json:"uuid" gorm:"size:128"`         // 客户端自生成持久 UUID
-	AndroidID    string `json:"androidId" gorm:"size:128"`    // Settings.Secure.ANDROID_ID
-	GAID         string `json:"gaid" gorm:"size:128"`         // Google Advertising ID
-	AAID         string `json:"aaid" gorm:"size:128"`         // Android Advertising ID（常与 GAID 同；华为等别名）
-	OAID         string `json:"oaid" gorm:"size:128"`         // 中国移动智能终端联合会 MSA
-	VAID         string `json:"vaid" gorm:"size:128"`         // 开发者匿名设备标识
-	CAID         string `json:"caid" gorm:"size:128"`         // 中国广告协会互联网广告标识
-	IMEI         string `json:"imei" gorm:"size:32"`
-	IMEI2        string `json:"imei2" gorm:"size:32"` // 双卡第二卡
-	MEID         string `json:"meid" gorm:"size:32"`
-	IDFA         string `json:"idfa" gorm:"size:128"` // iOS Advertising Identifier
-	IDFV         string `json:"idfv" gorm:"size:128"` // identifierForVendor
-	UDID         string `json:"udid" gorm:"size:128"`
-	OpenUDID     string `json:"openUdid" gorm:"size:128"`
-	GUID         string `json:"guid" gorm:"size:128"`         // Windows / 桌面机器 GUID
-	MAC          string `json:"mac" gorm:"size:64"`           // 主网卡 MAC
-	WifiMAC      string `json:"wifiMac" gorm:"size:64"`
-	BluetoothMAC string `json:"bluetoothMac" gorm:"size:64"`
-	IDFATracking *bool  `json:"idfaTracking,omitempty"` // iOS ATT 是否授权
+	DID          string   `json:"did" gorm:"size:128"`          // 业务侧设备号
+	UUID         string   `json:"uuid" gorm:"size:128"`         // 客户端自生成持久 UUID
+	AndroidID    string   `json:"androidId" gorm:"size:128"`    // Settings.Secure.ANDROID_ID
+	GAID         string   `json:"gaid" gorm:"size:128"`         // Google Advertising ID
+	AAID         string   `json:"aaid" gorm:"size:128"`         // Android Advertising ID（常与 GAID 同；华为等别名）
+	OAID         string   `json:"oaid" gorm:"size:128"`         // 中国移动智能终端联合会 MSA
+	VAID         string   `json:"vaid" gorm:"size:128"`         // 开发者匿名设备标识
+	CAID         string   `json:"caid" gorm:"size:128"`         // 中国广告协会互联网广告标识
+	IMEI         string   `json:"imei" gorm:"size:32"`
+	IMEI2        string   `json:"imei2" gorm:"size:32"` // 双卡第二卡
+	MEID         string   `json:"meid" gorm:"size:32"`
+	IDFA         string   `json:"idfa" gorm:"size:128"` // iOS Advertising Identifier
+	IDFV         string   `json:"idfv" gorm:"size:128"` // identifierForVendor
+	UDID         string   `json:"udid" gorm:"size:128"`
+	OpenUDID     string   `json:"openUdid" gorm:"size:128"`
+	GUID         string   `json:"guid" gorm:"size:128"` // Windows / 桌面机器 GUID
+	MAC          string   `json:"mac" gorm:"size:64"`   // 主网卡 MAC
+	WifiMAC      string   `json:"wifiMac" gorm:"size:64"`
+	BluetoothMAC string   `json:"bluetoothMac" gorm:"size:64"`
+	IDFATracking TriState `json:"idfaTracking,omitempty" gorm:"type:smallint"` // iOS ATT 是否授权
 
 	// —— 操作系统 ——
 	OSName          string `json:"osName" gorm:"size:64"`
@@ -135,9 +155,9 @@ type DeviceInfo struct {
 	ScreenHeight  int     `json:"screenHeight,omitempty"`
 	PixelRatio    float64 `json:"pixelRatio,omitempty"`
 	ColorDepth    int     `json:"colorDepth,omitempty"`
-	DeviceMemoryG float64 `json:"deviceMemoryGb,omitempty"`
-	CookieEnabled *bool   `json:"cookieEnabled,omitempty"`
-	DoNotTrack    *bool   `json:"doNotTrack,omitempty"`
+	DeviceMemoryG float64  `json:"deviceMemoryGb,omitempty"`
+	CookieEnabled TriState `json:"cookieEnabled,omitempty" gorm:"type:smallint"`
+	DoNotTrack    TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
 
 	// —— 扩展 ——
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`

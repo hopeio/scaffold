@@ -6,6 +6,7 @@
 package context
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 )
@@ -59,5 +60,23 @@ func TestAAIDGAIDAlias(t *testing.T) {
 	info.Normalize()
 	if info.GAID != "x" {
 		t.Fatalf("gaid alias: %q", info.GAID)
+	}
+}
+
+func TestTriState(t *testing.T) {
+	info := &DeviceInfo{IsPhysical: TriFalse, IDFATracking: TriTrue}
+	raw, err := json.Marshal(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out DeviceInfo
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.IsPhysical.IsFalse() || !out.IDFATracking.IsTrue() || out.IsLowRam.IsSet() {
+		t.Fatalf("tristate: %+v", out)
+	}
+	if TriFromBool(true) != TriTrue || TriFromBool(false) != TriFalse {
+		t.Fatal("TriFromBool")
 	}
 }
