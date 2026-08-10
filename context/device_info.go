@@ -56,14 +56,14 @@ func (t TriState) IsFalse() bool { return t == TriFalse }
 func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 
 // DeviceInfo 客户端环境信息（按域拆分嵌套）。
-// Device-Info 头传 JSON；服务端可补 network.ip / web.userAgent / network 地理头。
+// 服务端可补 network.ip / web.userAgent / network 地理头。
 type DeviceInfo struct {
 	Platform   string `json:"platform" gorm:"size:32"`   // android|ios|macos|windows|linux|web
 	ClientKind string `json:"clientKind" gorm:"size:32"` // mobile|desktop|web
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
-	IDs      DeviceIDInfo       `json:"ids" gorm:"embedded;embeddedPrefix:id_"`
+	ID       DeviceIDInfo       `json:"id" gorm:"embedded;embeddedPrefix:id_"`
 	OS       DeviceOSInfo       `json:"os" gorm:"embedded;embeddedPrefix:os_"`
 	Host     DeviceHostInfo     `json:"host" gorm:"embedded;embeddedPrefix:host_"`
 	Network  DeviceNetworkInfo  `json:"network" gorm:"embedded;embeddedPrefix:net_"`
@@ -76,7 +76,7 @@ type DeviceInfo struct {
 type DeviceAppInfo struct {
 	Code        string `json:"code" gorm:"size:128"`
 	Name        string `json:"name" gorm:"size:128"`
-	Ver         string `json:"ver" gorm:"size:64"`
+	Version     string `json:"version" gorm:"size:64"`
 	Build       string `json:"build" gorm:"size:64"`
 	PackageName string `json:"packageName" gorm:"size:255"` // Android applicationId
 	BundleID    string `json:"bundleId" gorm:"size:255"`    // iOS / macOS
@@ -100,11 +100,11 @@ type DeviceHardwareInfo struct {
 	Bootloader   string   `json:"bootloader" gorm:"size:128"`
 	DisplayID    string   `json:"displayId" gorm:"size:128"`
 	SerialNo     string   `json:"serialNo" gorm:"size:128"`
-	CPUVendor    string   `json:"cpuVendor" gorm:"size:64"`  // GenuineIntel / Apple / Qualcomm…
-	CPUModel     string   `json:"cpuModel" gorm:"size:255"`  // 如 Apple M2 Pro / Intel Core i7-12700H
-	CPUCores     int      `json:"cpuCores,omitempty"`        // 逻辑核；与 host.cpuCount 可同值
-	GPUVendor    string   `json:"gpuVendor" gorm:"size:128"` // Apple / Qualcomm / NVIDIA…
-	GPUModel     string   `json:"gpuModel" gorm:"size:255"`  // 如 Apple M2 / Adreno 740
+	CPUVendor    string   `json:"cpuVendor" gorm:"size:64"`    // GenuineIntel / Apple / Qualcomm…
+	CPUModel     string   `json:"cpuModel" gorm:"size:255"`    // 如 Apple M2 Pro / Intel Core i7-12700H
+	CPUCores     int      `json:"cpuCores,omitempty"`          // 逻辑核；与 host.cpuCount 可同值
+	GPUVendor    string   `json:"gpuVendor" gorm:"size:128"`   // Apple / Qualcomm / NVIDIA…
+	GPUModel     string   `json:"gpuModel" gorm:"size:255"`    // 如 Apple M2 / Adreno 740
 	GPURenderer  string   `json:"gpuRenderer" gorm:"size:255"` // WebGL UNMASKED_RENDERER 等原始串
 	IsPhysical   TriState `json:"isPhysical,omitempty" gorm:"type:smallint"`
 	IsLowRam     TriState `json:"isLowRam,omitempty" gorm:"type:smallint"`
@@ -192,18 +192,18 @@ type DeviceWebInfo struct {
 	DoNotTrack    TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
 }
 
-// DeviceInfoLite 业务表嵌入用的精简投影（行存）。
+// DeviceInfoLite
 type DeviceInfoLite struct {
-	Device    string  `json:"device" gorm:"size:255"`
-	OS        string  `json:"os" gorm:"size:255"`
-	AppCode   string  `json:"appCode" gorm:"size:255"`
-	AppVer    string  `json:"appVer" gorm:"size:255"`
-	IP        net.IP  `json:"ip" gorm:"size:64"`
-	Lng       float64 `json:"lng" gorm:"type:numeric(10,6)"`
-	Lat       float64 `json:"lat" gorm:"type:numeric(10,6)"`
-	Area      string  `json:"area" gorm:"size:255"`
-	UserAgent string  `json:"userAgent" gorm:"size:512"`
-	DeviceNo  string  `json:"deviceNo" gorm:"size:128"`
+	Platform   string  `json:"platform" gorm:"size:32"`   // android|ios|macos|windows|linux|web
+	ClientKind string  `json:"clientKind" gorm:"size:32"` // mobile|desktop|web
+	AppCode    string  `json:"appCode" gorm:"size:255"`
+	AppVersion string  `json:"appVersion" gorm:"size:255"`
+	IP         net.IP  `json:"ip" gorm:"size:64"`
+	Lng        float64 `json:"lng" gorm:"type:numeric(10,6)"`
+	Lat        float64 `json:"lat" gorm:"type:numeric(10,6)"`
+	Area       string  `json:"area" gorm:"size:255"`
+	UserAgent  string  `json:"userAgent" gorm:"size:512"`
+	DeviceNo   string  `json:"deviceNo" gorm:"size:128"`
 }
 
 // Lite 投影为精简行存结构。
@@ -213,16 +213,16 @@ func (d *DeviceInfo) Lite() DeviceInfoLite {
 	}
 	d.Normalize()
 	return DeviceInfoLite{
-		Device:    d.DisplayName(),
-		OS:        d.OSDisplay(),
-		AppCode:   d.App.Code,
-		AppVer:    d.App.Ver,
-		IP:        d.Network.IP,
-		Lng:       d.Network.Lng,
-		Lat:       d.Network.Lat,
-		Area:      d.Network.Area,
-		UserAgent: d.Web.UserAgent,
-		DeviceNo:  d.PrimaryDeviceNo(),
+		Platform:   d.Platform,
+		ClientKind: d.ClientKind,
+		AppCode:    d.App.Code,
+		AppVersion: d.App.Version,
+		IP:         d.Network.IP,
+		Lng:        d.Network.Lng,
+		Lat:        d.Network.Lat,
+		Area:       d.Network.Area,
+		UserAgent:  d.Web.UserAgent,
+		DeviceNo:   d.PrimaryDeviceNo(),
 	}
 }
 
@@ -248,7 +248,7 @@ func (d *DeviceInfo) PrimaryDeviceNo() string {
 	if d == nil {
 		return ""
 	}
-	id := d.IDs
+	id := d.ID
 	return firstNonEmpty(
 		id.DID, id.IDFV, id.AndroidID, id.OAID, id.GAID, id.AAID,
 		id.IDFA, id.GUID, id.UUID, id.UDID, id.OpenUDID, id.IMEI, id.MAC,
@@ -266,17 +266,17 @@ func (d *DeviceInfo) Normalize() {
 	if d.ClientKind == "" {
 		d.ClientKind = inferClientKind(d.Platform)
 	}
-	if d.App.Ver == "" && d.App.Build != "" {
-		d.App.Ver = d.App.Build
+	if d.App.Version == "" && d.App.Build != "" {
+		d.App.Version = d.App.Build
 	}
 	if d.App.PackageName == "" && d.App.BundleID != "" {
 		d.App.PackageName = d.App.BundleID
 	}
-	if d.IDs.GAID == "" && d.IDs.AAID != "" {
-		d.IDs.GAID = d.IDs.AAID
+	if d.ID.GAID == "" && d.ID.AAID != "" {
+		d.ID.GAID = d.ID.AAID
 	}
-	if d.IDs.AAID == "" && d.IDs.GAID != "" {
-		d.IDs.AAID = d.IDs.GAID
+	if d.ID.AAID == "" && d.ID.GAID != "" {
+		d.ID.AAID = d.ID.GAID
 	}
 	if d.Web.UserAgent == "" && d.Web.Browser != "" {
 		d.Web.UserAgent = strings.TrimSpace(d.Web.Browser + "/" + d.Web.BrowserVer)
@@ -309,9 +309,9 @@ func inferPlatform(d *DeviceInfo) string {
 		return PlatformLinux
 	case d.Web.Browser != "" || d.Web.Engine != "" || d.ClientKind == ClientKindWeb:
 		return PlatformWeb
-	case d.IDs.IDFV != "" || d.IDs.IDFA != "":
+	case d.ID.IDFV != "" || d.ID.IDFA != "":
 		return PlatformIOS
-	case d.IDs.AndroidID != "" || d.IDs.OAID != "" || d.IDs.GAID != "" || d.IDs.IMEI != "":
+	case d.ID.AndroidID != "" || d.ID.OAID != "" || d.ID.GAID != "" || d.ID.IMEI != "":
 		return PlatformAndroid
 	default:
 		return PlatformUnknown
@@ -373,7 +373,7 @@ func (d *DeviceInfo) Empty() bool {
 	platEmpty := d.Platform == "" || d.Platform == PlatformUnknown
 	return platEmpty &&
 		d.DisplayName() == "" && d.PrimaryDeviceNo() == "" &&
-		d.App.Code == "" && d.App.Ver == "" && d.Web.Browser == "" &&
+		d.App.Code == "" && d.App.Version == "" && d.Web.Browser == "" &&
 		d.OS.Name == "" && d.OS.Version == "" && len(d.Ext) == 0 &&
 		d.Web.UserAgent == "" && d.Network.Area == "" &&
 		d.Network.Lng == 0 && d.Network.Lat == 0
