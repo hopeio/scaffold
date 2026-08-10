@@ -122,7 +122,10 @@ type DeviceInfo struct {
 	Arch            string `json:"arch" gorm:"size:128"`
 
 	// —— 主机资源快照 ——
-	Locale       string `json:"locale" gorm:"size:64"`
+	Locale       string `json:"locale" gorm:"size:64"`     // 系统区域，如 zh_CN
+	Language     string `json:"language" gorm:"size:32"`   // 首选语言 BCP47，如 zh-CN
+	Languages    string `json:"languages" gorm:"size:255"` // 语言偏好列表（复数），逗号分隔，如 zh-CN,en-US
+	VoiceLang    string `json:"voiceLang" gorm:"size:32"`  // 语音（ASR/TTS）语言 BCP47
 	Timezone     string `json:"timezone" gorm:"size:64"`
 	Hostname     string `json:"hostname" gorm:"size:255"`
 	CPUCount     int    `json:"cpuCount,omitempty"`
@@ -143,18 +146,17 @@ type DeviceInfo struct {
 	Area        string  `json:"area" gorm:"size:255"`
 
 	// —— Web / 浏览器 ——
-	UserAgent     string  `json:"userAgent" gorm:"size:512"`
-	Browser       string  `json:"browser" gorm:"size:64"`
-	BrowserVer    string  `json:"browserVer" gorm:"size:64"`
-	Engine        string  `json:"engine" gorm:"size:64"`
-	EngineVer     string  `json:"engineVer" gorm:"size:64"`
-	Vendor        string  `json:"vendor" gorm:"size:128"`
-	Languages     string  `json:"languages" gorm:"size:255"`
-	MaxTouchPts   int     `json:"maxTouchPoints,omitempty"`
-	ScreenWidth   int     `json:"screenWidth,omitempty"`
-	ScreenHeight  int     `json:"screenHeight,omitempty"`
-	PixelRatio    float64 `json:"pixelRatio,omitempty"`
-	ColorDepth    int     `json:"colorDepth,omitempty"`
+	UserAgent     string   `json:"userAgent" gorm:"size:512"`
+	Browser       string   `json:"browser" gorm:"size:64"`
+	BrowserVer    string   `json:"browserVer" gorm:"size:64"`
+	Engine        string   `json:"engine" gorm:"size:64"`
+	EngineVer     string   `json:"engineVer" gorm:"size:64"`
+	Vendor        string   `json:"vendor" gorm:"size:128"`
+	MaxTouchPts   int      `json:"maxTouchPoints,omitempty"`
+	ScreenWidth   int      `json:"screenWidth,omitempty"`
+	ScreenHeight  int      `json:"screenHeight,omitempty"`
+	PixelRatio    float64  `json:"pixelRatio,omitempty"`
+	ColorDepth    int      `json:"colorDepth,omitempty"`
 	DeviceMemoryG float64  `json:"deviceMemoryGb,omitempty"`
 	CookieEnabled TriState `json:"cookieEnabled,omitempty" gorm:"type:smallint"`
 	DoNotTrack    TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
