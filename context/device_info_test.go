@@ -15,11 +15,14 @@ func TestDeviceFromHeaderJSON(t *testing.T) {
 	h := http.Header{}
 	h.Set("Device-Info", `{
 		"platform":"ios","clientKind":"mobile",
-		"modelName":"iPhone 16","osName":"iOS","osVersion":"18.0",
-		"appCode":"hoper","appVer":"2.0.0",
-		"idfv":"idfv-1","idfa":"idfa-1","did":"biz-did",
-		"aaid":"aaid-1","oaid":"oaid-1","imei":"860000000000001",
-		"mac":"AA:BB:CC:DD:EE:FF","arch":"arm64"
+		"app":{"code":"hoper","ver":"2.0.0"},
+		"hardware":{"modelName":"iPhone 16"},
+		"os":{"name":"iOS","version":"18.0","arch":"arm64"},
+		"ids":{
+			"did":"biz-did","idfv":"idfv-1","idfa":"idfa-1",
+			"aaid":"aaid-1","oaid":"oaid-1","imei":"860000000000001",
+			"mac":"AA:BB:CC:DD:EE:FF"
+		}
 	}`)
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
 	info := DeviceFromHeader(h)
@@ -38,14 +41,18 @@ func TestDeviceFromHeaderJSON(t *testing.T) {
 	if info.PrimaryDeviceNo() != "biz-did" {
 		t.Fatalf("primary: %q", info.PrimaryDeviceNo())
 	}
-	if info.IDFV != "idfv-1" || info.IDFA != "idfa-1" || info.OAID != "oaid-1" || info.AAID != "aaid-1" {
-		t.Fatalf("ids: %+v", info)
+	if info.IDs.IDFV != "idfv-1" || info.IDs.OAID != "oaid-1" || info.IDs.AAID != "aaid-1" {
+		t.Fatalf("ids: %+v", info.IDs)
 	}
-	if info.IMEI != "860000000000001" || info.MAC != "AA:BB:CC:DD:EE:FF" {
-		t.Fatalf("imei/mac: %+v", info)
+	if info.IDs.IMEI != "860000000000001" || info.IDs.MAC != "AA:BB:CC:DD:EE:FF" {
+		t.Fatalf("imei/mac: %+v", info.IDs)
 	}
-	if info.IP.String() != "10.0.0.1" {
-		t.Fatalf("xff ip: %v", info.IP)
+	if info.Network.IP.String() != "10.0.0.1" {
+		t.Fatalf("xff ip: %v", info.Network.IP)
+	}
+	lite := info.Lite()
+	if lite.Device != "iPhone 16" || lite.DeviceNo != "biz-did" || lite.AppCode != "hoper" {
+		t.Fatalf("lite: %+v", lite)
 	}
 }
 
@@ -56,15 +63,18 @@ func TestDeviceFromHeaderEmpty(t *testing.T) {
 }
 
 func TestAAIDGAIDAlias(t *testing.T) {
-	info := &DeviceInfo{AAID: "x"}
+	info := &DeviceInfo{IDs: DeviceIDInfo{AAID: "x"}}
 	info.Normalize()
-	if info.GAID != "x" {
-		t.Fatalf("gaid alias: %q", info.GAID)
+	if info.IDs.GAID != "x" {
+		t.Fatalf("gaid alias: %q", info.IDs.GAID)
 	}
 }
 
 func TestTriState(t *testing.T) {
-	info := &DeviceInfo{IsPhysical: TriFalse, IDFATracking: TriTrue}
+	info := &DeviceInfo{
+		Hardware: DeviceHardwareInfo{IsPhysical: TriFalse},
+		IDs:      DeviceIDInfo{IDFATracking: TriTrue},
+	}
 	raw, err := json.Marshal(info)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +83,7 @@ func TestTriState(t *testing.T) {
 	if err := json.Unmarshal(raw, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !out.IsPhysical.IsFalse() || !out.IDFATracking.IsTrue() || out.IsLowRam.IsSet() {
+	if !out.Hardware.IsPhysical.IsFalse() || !out.IDs.IDFATracking.IsTrue() || out.Hardware.IsLowRam.IsSet() {
 		t.Fatalf("tristate: %+v", out)
 	}
 	if TriFromBool(true) != TriTrue || TriFromBool(false) != TriFalse {
