@@ -56,19 +56,20 @@ func (t TriState) IsFalse() bool { return t == TriFalse }
 func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 
 // DeviceInfo 客户端环境信息（按域拆分嵌套）。
-// 服务端可补 network.ip / web.userAgent / network 地理头。
+// 服务端可补 networkLive.ip / web.userAgent / networkLive 地理头。
 type DeviceInfo struct {
 	Platform   string `json:"platform" gorm:"size:32"`   // android|ios|macos|windows|linux|web
 	ClientKind string `json:"clientKind" gorm:"size:32"` // mobile|desktop|web
 
-	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
-	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
-	ID       DeviceIDInfo       `json:"id" gorm:"embedded;embeddedPrefix:id_"`
-	OS       DeviceOSInfo       `json:"os" gorm:"embedded;embeddedPrefix:os_"`
-	Host     DeviceHostInfo     `json:"host" gorm:"embedded;embeddedPrefix:host_"`
-	HostLive DeviceHostLiveInfo `json:"hostLive" gorm:"embedded;embeddedPrefix:host_live_"`
-	Network  DeviceNetworkInfo  `json:"network" gorm:"embedded;embeddedPrefix:net_"`
-	Web      DeviceWebInfo      `json:"web" gorm:"embedded;embeddedPrefix:web_"`
+	App         DeviceAppInfo         `json:"app" gorm:"embedded;embeddedPrefix:app_"`
+	Hardware    DeviceHardwareInfo    `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
+	ID          DeviceIDInfo          `json:"id" gorm:"embedded;embeddedPrefix:id_"`
+	OS          DeviceOSInfo          `json:"os" gorm:"embedded;embeddedPrefix:os_"`
+	Host        DeviceHostInfo        `json:"host" gorm:"embedded;embeddedPrefix:host_"`
+	HostLive    DeviceHostLiveInfo    `json:"hostLive" gorm:"embedded;embeddedPrefix:host_live_"`
+	Network     DeviceNetworkInfo     `json:"network" gorm:"embedded;embeddedPrefix:net_"`
+	NetworkLive DeviceNetworkLiveInfo `json:"networkLive" gorm:"embedded;embeddedPrefix:net_live_"`
+	Web         DeviceWebInfo         `json:"web" gorm:"embedded;embeddedPrefix:web_"`
 
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
 }
@@ -129,9 +130,7 @@ type DeviceIDInfo struct {
 	UDID         string   `json:"udid" gorm:"size:128"`
 	OpenUDID     string   `json:"openUdid" gorm:"size:128"`
 	GUID         string   `json:"guid" gorm:"size:128"`
-	MAC          string   `json:"mac" gorm:"size:64"`
-	WifiMAC      string   `json:"wifiMac" gorm:"size:64"`
-	BluetoothMAC string   `json:"bluetoothMac" gorm:"size:64"`
+	MAC          string   `json:"mac" gorm:"size:64"` // 设备侧相对稳定的网卡/标识 MAC；会话随机 MAC 见 networkLive
 	IDFATracking TriState `json:"idfaTracking,omitempty" gorm:"type:smallint"`
 }
 
@@ -168,16 +167,23 @@ type DeviceHostLiveInfo struct {
 	DiskFreeB  int64 `json:"diskFreeBytes,omitempty"`
 }
 
-// DeviceNetworkInfo 网络 / 运营商 / 地理（含会话侧 IP）。
+// DeviceNetworkInfo 相对稳定的运营商 / SIM 画像。
+// IP、链路类型、经纬度等会话侧字段见 DeviceInfo.NetworkLive。
 type DeviceNetworkInfo struct {
-	IP          net.IP  `json:"ip" gorm:"size:64"`
-	NetworkType string  `json:"networkType" gorm:"size:32"` // wifi|cellular|ethernet|vpn|unknown
-	Carrier     string  `json:"carrier" gorm:"size:64"`
-	ICCID       string  `json:"iccid" gorm:"size:32"`
-	IMSI        string  `json:"imsi" gorm:"size:32"`
-	Lng         float64 `json:"lng" gorm:"type:numeric(10,6)"`
-	Lat         float64 `json:"lat" gorm:"type:numeric(10,6)"`
-	Area        string  `json:"area" gorm:"size:255"`
+	Carrier string `json:"carrier" gorm:"size:64"`
+	ICCID   string `json:"iccid" gorm:"size:32"`
+	IMSI    string `json:"imsi" gorm:"size:32"`
+}
+
+// DeviceNetworkLiveInfo 采集时刻可变的网络 / 地理快照。
+type DeviceNetworkLiveInfo struct {
+	IP           net.IP  `json:"ip" gorm:"size:64"`
+	NetworkType  string  `json:"networkType" gorm:"size:32"` // wifi|cellular|ethernet|vpn|unknown
+	WifiMAC      string  `json:"wifiMac" gorm:"size:64"`     // 常随随机 MAC / 当前连接变化
+	BluetoothMAC string  `json:"bluetoothMac" gorm:"size:64"`
+	Lng          float64 `json:"lng" gorm:"type:numeric(10,6)"`
+	Lat          float64 `json:"lat" gorm:"type:numeric(10,6)"`
+	Area         string  `json:"area" gorm:"size:255"`
 }
 
 // DeviceWebInfo 浏览器 / WebView。
@@ -223,10 +229,10 @@ func (d *DeviceInfo) Lite() DeviceInfoLite {
 		ClientKind: d.ClientKind,
 		AppCode:    d.App.Code,
 		AppVersion: d.App.Version,
-		IP:         d.Network.IP,
-		Lng:        d.Network.Lng,
-		Lat:        d.Network.Lat,
-		Area:       d.Network.Area,
+		IP:         d.NetworkLive.IP,
+		Lng:        d.NetworkLive.Lng,
+		Lat:        d.NetworkLive.Lat,
+		Area:       d.NetworkLive.Area,
 		UserAgent:  d.Web.UserAgent,
 		DeviceNo:   d.PrimaryDeviceNo(),
 	}
@@ -352,17 +358,17 @@ func DeviceFromHeader(header http.Header) *DeviceInfo {
 	if info == nil {
 		info = new(DeviceInfo)
 	}
-	if area := header.Get(httpx.HeaderArea); area != "" && info.Network.Area == "" {
-		info.Network.Area, _ = url.QueryUnescape(area)
+	if area := header.Get(httpx.HeaderArea); area != "" && info.NetworkLive.Area == "" {
+		info.NetworkLive.Area, _ = url.QueryUnescape(area)
 	}
-	if loc := header.Get(httpx.HeaderLocation); loc != "" && info.Network.Lng == 0 && info.Network.Lat == 0 {
-		info.Network.Lng, info.Network.Lat = parseLatLng(loc)
+	if loc := header.Get(httpx.HeaderLocation); loc != "" && info.NetworkLive.Lng == 0 && info.NetworkLive.Lat == 0 {
+		info.NetworkLive.Lng, info.NetworkLive.Lat = parseLatLng(loc)
 	}
 	if ua := header.Get(httpx.HeaderUserAgent); ua != "" && info.Web.UserAgent == "" {
 		info.Web.UserAgent = ua
 	}
-	if xff := header.Get(httpx.HeaderXForwardedFor); xff != "" && info.Network.IP == nil {
-		info.Network.IP = net.ParseIP(firstForwardedIP(xff))
+	if xff := header.Get(httpx.HeaderXForwardedFor); xff != "" && info.NetworkLive.IP == nil {
+		info.NetworkLive.IP = net.ParseIP(firstForwardedIP(xff))
 	}
 	info.Normalize()
 	if info.Empty() {
@@ -381,8 +387,8 @@ func (d *DeviceInfo) Empty() bool {
 		d.DisplayName() == "" && d.PrimaryDeviceNo() == "" &&
 		d.App.Code == "" && d.App.Version == "" && d.Web.Browser == "" &&
 		d.OS.Name == "" && d.OS.Version == "" && len(d.Ext) == 0 &&
-		d.Web.UserAgent == "" && d.Network.Area == "" &&
-		d.Network.Lng == 0 && d.Network.Lat == 0
+		d.Web.UserAgent == "" && d.NetworkLive.Area == "" &&
+		d.NetworkLive.Lng == 0 && d.NetworkLive.Lat == 0
 }
 
 func parseDeviceJSON(raw string) *DeviceInfo {

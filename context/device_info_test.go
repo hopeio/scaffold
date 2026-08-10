@@ -47,8 +47,8 @@ func TestDeviceFromHeaderJSON(t *testing.T) {
 	if info.ID.IMEI != "860000000000001" || info.ID.MAC != "AA:BB:CC:DD:EE:FF" {
 		t.Fatalf("imei/mac: %+v", info.ID)
 	}
-	if info.Network.IP.String() != "10.0.0.1" {
-		t.Fatalf("xff ip: %v", info.Network.IP)
+	if info.NetworkLive.IP.String() != "10.0.0.1" {
+		t.Fatalf("xff ip: %v", info.NetworkLive.IP)
 	}
 	lite := info.Lite()
 	if lite.Platform != "ios" || lite.ClientKind != "mobile" || lite.AppCode != "hoper" {
@@ -95,7 +95,9 @@ func TestHostLiveNested(t *testing.T) {
 	raw := []byte(`{
 		"platform":"macos",
 		"host":{"ramMb":16384,"diskTotalBytes":500000000000},
-		"hostLive":{"ramAvailMb":4096,"diskFreeBytes":100}
+		"hostLive":{"ramAvailMb":4096,"diskFreeBytes":100},
+		"network":{"carrier":"CMCC"},
+		"networkLive":{"networkType":"wifi","lng":116.4,"lat":39.9,"area":"beijing","wifiMac":"AA:BB"}
 	}`)
 	var info DeviceInfo
 	if err := json.Unmarshal(raw, &info); err != nil {
@@ -106,5 +108,11 @@ func TestHostLiveNested(t *testing.T) {
 	}
 	if info.HostLive.RamAvailMB != 4096 || info.HostLive.DiskFreeB != 100 {
 		t.Fatalf("live: %+v", info.HostLive)
+	}
+	if info.Network.Carrier != "CMCC" {
+		t.Fatalf("network: %+v", info.Network)
+	}
+	if info.NetworkLive.NetworkType != "wifi" || info.NetworkLive.Lng != 116.4 || info.NetworkLive.WifiMAC != "AA:BB" {
+		t.Fatalf("networkLive: %+v", info.NetworkLive)
 	}
 }
