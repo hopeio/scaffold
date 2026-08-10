@@ -122,13 +122,12 @@ type DeviceInfo struct {
 	Arch            string `json:"arch" gorm:"size:128"`
 
 	// —— 主机资源快照 ——
-	Locale       string `json:"locale" gorm:"size:64"`     // 系统区域，如 zh_CN
-	Language     string `json:"language" gorm:"size:32"`   // 首选语言 BCP47，如 zh-CN
-	Languages    string `json:"languages" gorm:"size:255"` // 语言偏好列表（复数），逗号分隔，如 zh-CN,en-US
-	VoiceLang    string `json:"voiceLang" gorm:"size:32"`  // 语音（ASR/TTS）语言 BCP47
-	Timezone     string `json:"timezone" gorm:"size:64"`
-	Hostname     string `json:"hostname" gorm:"size:255"`
-	CPUCount     int    `json:"cpuCount,omitempty"`
+	Locale    string `json:"locale" gorm:"size:64"`     // 系统区域，如 zh_CN
+	Language  string `json:"language" gorm:"size:32"`   // 首选语言 BCP47，如 zh-CN
+	Languages string `json:"languages" gorm:"size:255"` // 语言偏好列表，逗号分隔，如 zh-CN,en-US
+	Timezone  string `json:"timezone" gorm:"size:64"`
+	Hostname  string `json:"hostname" gorm:"size:255"`
+	CPUCount  int    `json:"cpuCount,omitempty"`
 	CPUFrequency int64  `json:"cpuFrequencyHz,omitempty"`
 	RamMB        int64  `json:"ramMb,omitempty"`
 	RamAvailMB   int64  `json:"ramAvailMb,omitempty"`
@@ -217,6 +216,17 @@ func (d *DeviceInfo) Normalize() {
 	}
 	if d.UserAgent == "" && d.Browser != "" {
 		d.UserAgent = strings.TrimSpace(d.Browser + "/" + d.BrowserVer)
+	}
+	if d.Language == "" {
+		if d.Languages != "" {
+			if i := strings.IndexByte(d.Languages, ','); i >= 0 {
+				d.Language = strings.TrimSpace(d.Languages[:i])
+			} else {
+				d.Language = strings.TrimSpace(d.Languages)
+			}
+		} else if d.Locale != "" {
+			d.Language = strings.ReplaceAll(d.Locale, "_", "-")
+		}
 	}
 }
 
