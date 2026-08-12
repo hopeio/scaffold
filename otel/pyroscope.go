@@ -43,9 +43,7 @@ func (c PyroscopeConfig) resolve(appName string) PyroscopeConfig {
 	if out.AuthToken == "" {
 		out.AuthToken = os.Getenv("PYROSCOPE_AUTH_TOKEN")
 	}
-	if !out.Enabled && out.ServerAddress != "" {
-		out.Enabled = true
-	}
+	// Enabled 是总开关：false 即使配了 ServerAddress / PYROSCOPE_SERVER_ADDRESS 也不启动。
 	return out
 }
 

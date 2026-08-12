@@ -29,8 +29,7 @@ type SDKConfig struct {
 	// SampleRatio is the fraction of traces to record, clamped to [0, 1].
 	// 1 = always sample, 0 = never sample. Default when unset in callers is 1.
 	SampleRatio float64
-	// Pyroscope enables continuous profiling + span profile labels when set.
-	// Also activated by env PYROSCOPE_SERVER_ADDRESS (debug launch).
+	// Pyroscope：仅 Enabled=true 时启动；地址可从 ServerAddress 或 PYROSCOPE_SERVER_ADDRESS 补。
 	Pyroscope PyroscopeConfig
 }
 

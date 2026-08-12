@@ -3,10 +3,10 @@ package otel
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
+	"github.com/hopeio/gox/log"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -119,7 +119,7 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig
 		_ = tracerProvider.Shutdown(ctx)
 		return nil, nil, err
 	}
-	log.Printf("[OTel] pyroscope profiling → %s app=%s", pyroCfg.ServerAddress, pyroCfg.ApplicationName)
+	log.Infof("[OTel] pyroscope profiling → %s app=%s", pyroCfg.ServerAddress, pyroCfg.ApplicationName)
 	return tracerProvider, func(context.Context) error { return profiler.Stop() }, nil
 }
 
