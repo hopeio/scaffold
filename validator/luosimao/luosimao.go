@@ -52,5 +52,5 @@ func Verify(reqURL, apiKey, response string) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return result.CheckError()
 }
