@@ -2,6 +2,7 @@ package otel
 
 import (
 	"sync/atomic"
+	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -29,6 +30,13 @@ type SDKConfig struct {
 	// SampleRatio is the fraction of traces to record, clamped to [0, 1].
 	// 1 = always sample, 0 = never sample. Default when unset in callers is 1.
 	SampleRatio float64
+	// Secure 为 true 时不再强制 WithInsecure，交给 OTEL_EXPORTER_OTLP_* 环境变量
+	// 与 TLS 默认逻辑；false 保持既有行为（明文导出，适合本地 collector）。
+	Secure bool
+	// MetricInterval 为周期性指标导出间隔，0 时默认 10s。
+	MetricInterval time.Duration
+	// DisableRuntimeMetrics 跳过 Go runtime 指标采集。
+	DisableRuntimeMetrics bool
 	// Pyroscope：仅 Enabled=true 时启动；地址可从 ServerAddress 或 PYROSCOPE_SERVER_ADDRESS 补。
 	Pyroscope PyroscopeConfig
 }

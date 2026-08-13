@@ -6,18 +6,15 @@
 
 package database
 
-var (
-	tableName = [...]string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}
-)
+import "strconv"
 
 // TableName returns a sharded table name based on the numeric id.
-// IDs below 200,000,000 use the base name; higher IDs get a numeric suffix for horizontal sharding.
+// IDs below 200,000,000 use the base name; higher IDs get a numeric suffix for
+// horizontal sharding (id/2e8: 1, 2, ... 10, 11 ...).
+// 曾用 string(byte(n+49)) 拼后缀：n≥10 时产生 ';' '<' 等乱码字符（';' 还是 SQL 危险字符）。
 func TableName(name string, id uint64) string {
 	if id < 2000_00000 {
 		return name
 	}
-	if id < 2_0000_00000 {
-		return name + "_" + tableName[id/2000_00000-1]
-	}
-	return name + "_" + string(byte(id/2000_00000+49))
+	return name + "_" + strconv.FormatUint(id/2000_00000, 10)
 }

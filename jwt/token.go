@@ -14,11 +14,14 @@ import (
 )
 
 var (
-	Parser          = jwt.NewParser()
+	// Parser 默认锁定 HMAC 算法族做深度防御（本包签发一律 HS256，密钥为对称 []byte，
+	// 不允许被换成其它算法家族）；业务可用 SetOptions(jwt.WithValidMethods(...)) 进一步收紧。
+	Parser          = jwt.NewParser(jwt.WithValidMethods([]string{"HS256", "HS384", "HS512"}))
 	ErrInvalidToken = errors.New("invalid token")
 )
 
 // SetOptions applies additional parser options to the global JWT Parser.
+// 只应在启动早期（任何请求处理之前）调用：Parser 是无锁全局变量。
 func SetOptions(options ...jwt.ParserOption) {
 	for _, option := range options {
 		option(Parser)

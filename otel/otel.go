@@ -63,7 +63,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (s
 	}
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx, res)
+	meterProvider, err := newMeterProvider(ctx, res, cfg)
 	if err != nil {
 		handleErr(err)
 		return
@@ -71,7 +71,7 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (s
 
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 
-	loggerProvider, err := newLoggerProvider(ctx, res)
+	loggerProvider, err := newLoggerProvider(ctx, res, cfg)
 	if err != nil {
 		handleErr(err)
 		return
@@ -95,8 +95,12 @@ func newPropagator() {
 // When Pyroscope is enabled, wraps the provider with otel-profiling-go and starts pyroscope-go;
 // stopProfiling (if non-nil) must be registered for shutdown.
 func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
-	traceExporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithInsecure())
+	var opts []otlptracehttp.Option
+	if !cfg.Secure {
+		// 显式 WithInsecure 会覆盖环境变量里的 https endpoint；Secure=true 时交还给 env/TLS
+		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+	traceExporter, err := otlptracehttp.New(ctx, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -123,31 +127,46 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig
 	return tracerProvider, func(context.Context) error { return profiler.Stop() }, nil
 }
 
-// newMeterProvider creates an OTLP HTTP meter provider with a 10-second periodic reader and runtime metrics.
-func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
-	reader, err := otlpmetrichttp.New(ctx,
-		otlpmetrichttp.WithInsecure())
+// newMeterProvider creates an OTLP HTTP meter provider with a periodic reader
+// (cfg.MetricInterval, default 10s) and optional runtime metrics.
+func newMeterProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdkmetric.MeterProvider, error) {
+	var opts []otlpmetrichttp.Option
+	if !cfg.Secure {
+		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+	reader, err := otlpmetrichttp.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
+	interval := cfg.MetricInterval
+	if interval <= 0 {
+		interval = 10 * time.Second
+	}
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(reader, sdkmetric.WithInterval(10*time.Second))),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(reader, sdkmetric.WithInterval(interval))),
 	)
 	otel.SetMeterProvider(meterProvider)
-	if err := runtime.Start(
-		runtime.WithMeterProvider(meterProvider),
-		runtime.WithMinimumReadMemStatsInterval(15*time.Second),
-	); err != nil {
-		log.Fatalf("failed to start runtime instrumentation: %v", err)
+	if !cfg.DisableRuntimeMetrics {
+		if err := runtime.Start(
+			runtime.WithMeterProvider(meterProvider),
+			runtime.WithMinimumReadMemStatsInterval(15*time.Second),
+		); err != nil {
+			// 库不该 Fatal 杀进程；采集失败交由调用方决定
+			_ = meterProvider.Shutdown(ctx)
+			return nil, err
+		}
 	}
 	return meterProvider, nil
 }
 
 // newLoggerProvider creates an OTLP HTTP logger provider with batch log processing.
-func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	exporter, err := otlploghttp.New(ctx,
-		otlploghttp.WithInsecure())
+func newLoggerProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdklog.LoggerProvider, error) {
+	var opts []otlploghttp.Option
+	if !cfg.Secure {
+		opts = append(opts, otlploghttp.WithInsecure())
+	}
+	exporter, err := otlploghttp.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
