@@ -103,7 +103,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	buf, contentType, _ := marshalForRequest(r, s)
 	header := w.Header()
 	header.Set(httpx.HeaderContentType, contentType)
-	mix.WriteErrHeaders(header, s.Code, s.Msg)
+	mix.WriteErrHeaders(header, s.Code)
 	ow := w
 	if uw, ok := w.(httpx.Unwrapper); ok {
 		ow = uw.Unwrap()

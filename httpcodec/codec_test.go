@@ -119,11 +119,9 @@ func TestHandleErrorProtobufHeaders(t *testing.T) {
 	if rec.Header().Get(httpx.HeaderErrorCode) != "3" {
 		t.Fatalf("Error-Code=%q", rec.Header().Get(httpx.HeaderErrorCode))
 	}
-	if rec.Header().Get(httpx.HeaderErrorMsg) != "auth.err.thirdLogin" {
-		t.Fatalf("Error-Msg=%q", rec.Header().Get(httpx.HeaderErrorMsg))
-	}
-	if rec.Header().Get(httpx.HeaderGrpcStatus) != "3" {
-		t.Fatalf("Grpc-Status=%q", rec.Header().Get(httpx.HeaderGrpcStatus))
+	// 只写 Error-Code 头：msg/i18n 变量走 body 的 ErrorInfo。
+	if rec.Header().Get(httpx.HeaderErrorMsg) != "" || rec.Header().Get(httpx.HeaderGrpcStatus) != "" {
+		t.Fatal("only Error-Code header expected")
 	}
 	var ei errdetails.ErrorInfo
 	if err := proto.Unmarshal(rec.Body.Bytes(), &ei); err != nil {
