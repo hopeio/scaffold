@@ -111,6 +111,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	if recorder, ok := ow.(httpx.RecordBodyer); ok {
 		recorder.RecordBody(buf, s)
 	}
+	w.WriteHeader(mix.StatusFromErrCode(s.Code))
 	if _, werr := w.Write(buf); werr != nil {
 		grpclog.Infof("Failed to write response: %v", werr)
 	}
