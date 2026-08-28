@@ -37,6 +37,8 @@ type SDKConfig struct {
 	MetricInterval time.Duration
 	// DisableRuntimeMetrics 跳过 Go runtime 指标采集。
 	DisableRuntimeMetrics bool
+	// Export OTLP endpoints/protocol/headers; empty falls back to OTEL_* env only.
+	Export OTLPExport
 	// Pyroscope：仅 Enabled=true 时启动；地址可从 ServerAddress 或 PYROSCOPE_SERVER_ADDRESS 补。
 	Pyroscope PyroscopeConfig
 }

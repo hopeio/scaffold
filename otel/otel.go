@@ -15,9 +15,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
 )
 
@@ -95,12 +92,7 @@ func newPropagator() {
 // When Pyroscope is enabled, wraps the provider with otel-profiling-go and starts pyroscope-go;
 // stopProfiling (if non-nil) must be registered for shutdown.
 func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
-	var opts []otlptracehttp.Option
-	if !cfg.Secure {
-		// 显式 WithInsecure 会覆盖环境变量里的 https endpoint；Secure=true 时交还给 env/TLS
-		opts = append(opts, otlptracehttp.WithInsecure())
-	}
-	traceExporter, err := otlptracehttp.New(ctx, opts...)
+	traceExporter, err := newTraceExporter(ctx, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,11 +122,7 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig
 // newMeterProvider creates an OTLP HTTP meter provider with a periodic reader
 // (cfg.MetricInterval, default 10s) and optional runtime metrics.
 func newMeterProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdkmetric.MeterProvider, error) {
-	var opts []otlpmetrichttp.Option
-	if !cfg.Secure {
-		opts = append(opts, otlpmetrichttp.WithInsecure())
-	}
-	reader, err := otlpmetrichttp.New(ctx, opts...)
+	reader, err := newMetricExporter(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +150,7 @@ func newMeterProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig
 
 // newLoggerProvider creates an OTLP HTTP logger provider with batch log processing.
 func newLoggerProvider(ctx context.Context, res *resource.Resource, cfg SDKConfig) (*sdklog.LoggerProvider, error) {
-	var opts []otlploghttp.Option
-	if !cfg.Secure {
-		opts = append(opts, otlploghttp.WithInsecure())
-	}
-	exporter, err := otlploghttp.New(ctx, opts...)
+	exporter, err := newLogExporter(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

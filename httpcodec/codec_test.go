@@ -21,8 +21,8 @@ func TestWantsJSON(t *testing.T) {
 	}{
 		{"", false},
 		{"*/*", false},
-		{"application/x-protobuf", false},
-		{"application/x-protobuf, application/json", false},
+		{"application/protobuf", false},
+		{"application/protobuf, application/json", false},
 		{"application/json", true},
 		{"application/json, text/plain, */*", true},
 	}
@@ -40,12 +40,12 @@ func TestWantsJSON(t *testing.T) {
 func TestMarshalProtobufDefault(t *testing.T) {
 	msg := wrapperspb.String("ok")
 	r, _ := http.NewRequest(http.MethodPost, "/", nil)
-	r.Header.Set("Accept", "application/x-protobuf")
+	r.Header.Set("Accept", "application/protobuf")
 	data, ct, err := marshalForRequest(r, msg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ct != httpx.ContentTypeXProtobuf {
+	if ct != httpx.ContentTypeProtobuf {
 		t.Fatalf("content-type %q", ct)
 	}
 	var got wrapperspb.StringValue
@@ -75,12 +75,12 @@ func TestMarshalJSONFallback(t *testing.T) {
 
 func TestMarshalErrRespProtobuf(t *testing.T) {
 	r, _ := http.NewRequest(http.MethodGet, "/", nil)
-	r.Header.Set("Accept", "application/x-protobuf")
+	r.Header.Set("Accept", "application/protobuf")
 	data, ct, err := marshalForRequest(r, mix.NewErrResp(1001, "auth.err.notActivated", map[string]string{"type": "Apple"}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ct != httpx.ContentTypeXProtobuf {
+	if ct != httpx.ContentTypeProtobuf {
 		t.Fatalf("content-type %q", ct)
 	}
 	var ei errdetails.ErrorInfo
@@ -114,7 +114,7 @@ func TestMarshalErrRespJSON(t *testing.T) {
 func TestHandleErrorProtobufHeaders(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r, _ := http.NewRequest(http.MethodGet, "/", nil)
-	r.Header.Set("Accept", "application/x-protobuf")
+	r.Header.Set("Accept", "application/protobuf")
 	handleError(rec, r, mix.NewErrResp(3, "auth.err.thirdLogin", map[string]string{"type": "Apple"}))
 	if rec.Header().Get(httpx.HeaderErrorCode) != "3" {
 		t.Fatalf("Error-Code=%q", rec.Header().Get(httpx.HeaderErrorCode))
