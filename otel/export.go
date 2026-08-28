@@ -27,18 +27,13 @@ func (e OTLPExport) useGRPC() bool {
 	return strings.EqualFold(strings.TrimSpace(e.Protocol), "grpc")
 }
 
-// signalPath maps a signal to its OTLP/HTTP URL path suffix (RFC 9117).
-var signalPath = map[string]string{
-	"traces":  "/v1/traces",
-	"metrics": "/v1/metrics",
-	"logs":    "/v1/logs",
-}
-
 // signalEndpoint returns the per-signal export URL.
 // An explicitly configured TracesEndpoint/MetricsEndpoint/LogsEndpoint wins.
-// Otherwise, when the Endpoint base is set and the protocol is HTTP (OTLP/HTTP
-// requires the full /v1/<signal> path), the base is joined with the signal path;
-// gRPC carries the path on the wire, so the bare host:port Endpoint is returned.
+// Otherwise, when the Endpoint base is set and the protocol is HTTP, the base
+// is joined with the OTLP/HTTP path /v1/<signal>. We cannot delegate this to the
+// SDK's WithEndpoint auto-suffix: that only applies to a bare host:port and would
+// drop any base path in Endpoint (e.g. OpenObserve's /api/default). gRPC carries
+// the path on the wire, so the bare Endpoint is returned.
 func (e OTLPExport) signalEndpoint(signal string) string {
 	switch signal {
 	case "traces":
@@ -58,7 +53,7 @@ func (e OTLPExport) signalEndpoint(signal string) string {
 	if base == "" || e.useGRPC() {
 		return base
 	}
-	return strings.TrimRight(base, "/") + signalPath[signal]
+	return strings.TrimRight(base, "/") + "/v1/" + signal
 }
 
 func (e OTLPExport) headers() map[string]string {
