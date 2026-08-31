@@ -130,10 +130,10 @@ func upsertByMD5[T any](db *gorm.DB, payload T) (id string, err error) {
 }
 
 // Upsert 分表写入稳定域；跳过 HostLive / NetworkLive。返回主表 MD5。
-// id 为预计算的主表内容寻址主键（如调用方已对 protobuf 二进制算好 MD5），
-// 非空时直接采用，保证与服务端/客户端算法一致；为空则回退到对引用结构 JSON 哈希。
+// id 为预计算的主表内容寻址主键（调用方需对 protobuf 稳定域二进制算好 MD5，
+// 保证与服务端/客户端算法一致），必填；为空视为非法入参。
 func Upsert(db *gorm.DB, info *DeviceInfo, id string) (string, error) {
-	if info == nil || db == nil {
+	if info == nil || db == nil || id == "" {
 		return "", gorm.ErrInvalidData
 	}
 	info.Normalize()
@@ -178,35 +178,6 @@ func Upsert(db *gorm.DB, info *DeviceInfo, id string) (string, error) {
 		NetworkID:  netID,
 		WebID:      webID,
 		Ext:        info.Ext,
-	}
-	if id == "" {
-		var err error
-		id, err = ContentMD5(struct {
-			Platform   string            `json:"platform"`
-			ClientKind string            `json:"clientKind"`
-			AppID      string            `json:"appId"`
-			HardwareID string            `json:"hardwareId"`
-			IdentID    string            `json:"identId"`
-			OsID       string            `json:"osId"`
-			HostID     string            `json:"hostId"`
-			NetworkID  string            `json:"networkId"`
-			WebID      string            `json:"webId"`
-			Ext        map[string]string `json:"ext,omitempty"`
-		}{
-			Platform:   row.Platform,
-			ClientKind: row.ClientKind,
-			AppID:      row.AppID,
-			HardwareID: row.HardwareID,
-			IdentID:    row.IdentID,
-			OsID:       row.OsID,
-			HostID:     row.HostID,
-			NetworkID:  row.NetworkID,
-			WebID:      row.WebID,
-			Ext:        row.Ext,
-		})
-		if err != nil {
-			return "", err
-		}
 	}
 	row.ID = id
 	err = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error
