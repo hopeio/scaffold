@@ -38,14 +38,14 @@ func TestUpsertSplitTables(t *testing.T) {
 			Lng:         116.4,
 		},
 	}
-	id1, err := Upsert(db, info)
+	id1, err := Upsert(db, info, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if id1 == "" {
 		t.Fatal("empty id")
 	}
-	id2, err := Upsert(db, info)
+	id2, err := Upsert(db, info, "")
 	if err != nil {
 		t.Fatal(err)
 	}
