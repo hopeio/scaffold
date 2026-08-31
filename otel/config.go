@@ -1,29 +1,17 @@
 package otel
 
 import (
-	"sync/atomic"
 	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-// Config is a common on/off switch that I/O plugins can embed or configure independently.
-// Disabled=true forces the plugin off; Enabled=true forces it on; both false follows SetupOTelSDK.
-type Config struct {
-	Enabled  bool `json:"enabled"`
-	Disabled bool `json:"disabled"`
-}
-
-// Active reports whether this plugin should be enabled given the current bootstrapping state.
-func (c Config) Active() bool {
-	if c.Disabled {
-		return false
-	}
-	if c.Enabled {
-		return true
-	}
-	return IsBootstrapped()
-}
+// Config is the common embedding point for I/O plugins. Plugins are mounted by the
+// application at its own injection hooks (e.g. dao.AfterInject); NOT mounting a plugin
+// is how it is disabled — there is no separate on/off flag. This avoids a bootstrap-order
+// dependency: a flag whose "auto" state depends on whether SetupOTelSDK has run would
+// silently no-op at injection time (before the SDK exists), dropping DB/Redis/S3 spans.
+type Config struct{}
 
 // SDKConfig configures OpenTelemetry SDK bootstrap (trace sampling, etc.).
 type SDKConfig struct {
@@ -63,10 +51,3 @@ func ratioSampler(ratio float64) sdktrace.Sampler {
 		return sdktrace.TraceIDRatioBased(ratio)
 	}
 }
-
-var bootstrapped atomic.Bool
-
-func IsBootstrapped() bool { return bootstrapped.Load() }
-
-// markBootstrapped records that the OTel SDK has been fully initialized.
-func markBootstrapped() { bootstrapped.Store(true) }

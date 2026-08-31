@@ -22,7 +22,7 @@ func NewRedisPlugin(cfg RedisPlugin) *RedisPlugin {
 
 // Instrument installs redisotel tracing and/or metrics hooks on the given client.
 func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
-	if p == nil || !p.Active() || client == nil {
+	if p == nil || client == nil {
 		return nil
 	}
 	if p.Tracing {

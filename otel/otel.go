@@ -76,7 +76,6 @@ func SetupOTelSDK(ctx context.Context, res *resource.Resource, cfg SDKConfig) (s
 
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 
-	markBootstrapped()
 	return
 }
 

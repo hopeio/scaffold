@@ -17,17 +17,17 @@ func NewGRPCPlugin(cfg GRPCPlugin) *GRPCPlugin {
 	return &cfg
 }
 
-// ServerHandler returns an otelgrpc server stats handler, or nil when the plugin is inactive.
+// ServerHandler returns an otelgrpc server stats handler, or nil when the plugin is nil.
 func (p *GRPCPlugin) ServerHandler() stats.Handler {
-	if p == nil || !p.Active() {
+	if p == nil {
 		return nil
 	}
 	return otelgrpc.NewServerHandler(p.Opts...)
 }
 
-// ClientHandler returns an otelgrpc client stats handler, or nil when the plugin is inactive.
+// ClientHandler returns an otelgrpc client stats handler, or nil when the plugin is nil.
 func (p *GRPCPlugin) ClientHandler() stats.Handler {
-	if p == nil || !p.Active() {
+	if p == nil {
 		return nil
 	}
 	return otelgrpc.NewClientHandler(p.Opts...)

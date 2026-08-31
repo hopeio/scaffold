@@ -18,7 +18,7 @@ func NewMinIOPlugin(cfg MinIOPlugin) *MinIOPlugin {
 
 // WrapTransport wraps base with an otelhttp transport that creates a client span for each S3 call.
 func (p *MinIOPlugin) WrapTransport(base http.RoundTripper) http.RoundTripper {
-	if p == nil || !p.Active() {
+	if p == nil {
 		return base
 	}
 	if base == nil {

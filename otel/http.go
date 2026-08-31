@@ -22,7 +22,7 @@ func NewHTTPPlugin(cfg HTTPPlugin) *HTTPPlugin {
 
 // Transport wraps base with OTel client-trace instrumentation; falls back to http.DefaultTransport when base is nil.
 func (p *HTTPPlugin) Transport(base http.RoundTripper) http.RoundTripper {
-	if p == nil || !p.Active() {
+	if p == nil {
 		return base
 	}
 	if base == nil {
@@ -38,7 +38,7 @@ func (p *HTTPPlugin) Transport(base http.RoundTripper) http.RoundTripper {
 
 // Client instruments the given http.Client's Transport in place and returns it.
 func (p *HTTPPlugin) Client(c *http.Client) *http.Client {
-	if p == nil || !p.Active() || c == nil {
+	if p == nil || c == nil {
 		return c
 	}
 	c.Transport = p.Transport(c.Transport)
@@ -47,7 +47,7 @@ func (p *HTTPPlugin) Client(c *http.Client) *http.Client {
 
 // Handler wraps h with an OTel server span named by operation (defaults to "http").
 func (p *HTTPPlugin) Handler(h http.Handler, operation string) http.Handler {
-	if p == nil || !p.Active() || h == nil {
+	if p == nil || h == nil {
 		return h
 	}
 	if operation == "" {

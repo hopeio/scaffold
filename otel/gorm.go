@@ -23,7 +23,7 @@ func NewGORMPlugin(cfg GORMPlugin) *GORMPlugin {
 
 // Use calls db.Use to register the gox OTelPlugin together with the slow-SQL metric hook.
 func (p *GORMPlugin) Use(db *gorm.DB) error {
-	if p == nil || !p.Active() || db == nil {
+	if p == nil || db == nil {
 		return nil
 	}
 	slow := NewSlowSQLMetric(p.SlowSQLMs)
