@@ -9,7 +9,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	httpx "github.com/hopeio/gox/net/http"
+	"google.golang.org/grpc/metadata"
 )
 
 // HTTPPlugin wraps HTTP Transport and Handler with OTel instrumentation via otelhttp.
@@ -76,11 +79,47 @@ func (p *HTTPPlugin) Handler(h http.Handler, operation string) http.Handler {
 	return otelhttp.NewHandler(h, operation, p.Opts...)
 }
 
-// TraceparentAttributes records the client-supplied W3C `traceparent` as
-// attributes on the server-generated root span, WITHOUT inheriting the client
-// trace. The Go side always starts a fresh trace (otelhttp is configured with
-// an empty propagator), so the client's trace_id/span_id are kept only for
-// correlation/audit — never trusted as the authoritative parent.
+// TrustedInternalPropagator wraps a real propagator so that ONLY requests
+// carrying the internal-only `Grpc-Internal` metadata header are trusted and
+// have their incoming trace context extracted (inherited). External requests
+// (no header) are not extracted, so the server starts a fresh root span.
+// Use this on HTTP ingress to mirror grpc's PublicEndpointFn behaviour.
+func TrustedInternalPropagator(real propagation.TextMapPropagator) propagation.TextMapPropagator {
+	if real == nil {
+		real = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+	}
+	return &trustedInternalPropagator{real: real}
+}
+
+type trustedInternalPropagator struct {
+	real propagation.TextMapPropagator
+}
+
+// isInternalRequest checks the incoming `Grpc-Internal` header, which internal
+// service-to-service callers set (see gox httpx.HeaderGrpcInternal).
+func isInternalRequest(ctx context.Context) bool {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if v, ok := md[httpx.HeaderGrpcInternal]; ok && len(v) > 0 && v[0] != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *trustedInternalPropagator) Extract(ctx context.Context, carrier propagation.TextMapCarrier) context.Context {
+	if isInternalRequest(ctx) {
+		return p.real.Extract(ctx, carrier)
+	}
+	return ctx
+}
+
+func (p *trustedInternalPropagator) Inject(ctx context.Context, carrier propagation.TextMapCarrier) {
+	p.real.Inject(ctx, carrier)
+}
+
+func (p *trustedInternalPropagator) Fields() []string {
+	return p.real.Fields()
+}
 func TraceparentAttributes(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if tp := r.Header.Get("traceparent"); tp != "" {
