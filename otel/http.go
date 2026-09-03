@@ -30,9 +30,10 @@ func NewHTTPPlugin(cfg HTTPPlugin) *HTTPPlugin {
 }
 
 // WithTraceparentAttributes enables recording the inbound W3C `traceparent`
-// (client trace_id/span_id) as attributes on the server root span. The server
-// always starts a fresh trace (combine with an empty propagator so it does not
-// inherit the client span), keeping the client ids for correlation/audit only.
+// (client trace_id/span_id) as attributes on the server root span for
+// correlation/audit. Inheritance is controlled separately by the propagator
+// (e.g. TrustedInternalPropagator): external callers stay on a fresh root;
+// trusted internal callers may still inherit.
 func (p *HTTPPlugin) WithTraceparentAttributes() *HTTPPlugin {
 	if p != nil {
 		p.traceparentAttrs = true
@@ -95,11 +96,21 @@ type trustedInternalPropagator struct {
 	real propagation.TextMapPropagator
 }
 
-// isInternalRequest checks the incoming `Grpc-Internal` header, which internal
-// service-to-service callers set (see gox httpx.HeaderGrpcInternal).
-func isInternalRequest(ctx context.Context) bool {
+// isInternalRequest reports whether the call carries the internal-only
+// `Grpc-Internal` marker (see gox httpx.HeaderGrpcInternal).
+//
+// For HTTP (otelhttp), Extract runs with a HeaderCarrier before gRPC metadata
+// exists on ctx — the header must be read from the carrier. For gRPC-shaped
+// contexts, fall back to metadata.Get (keys are lowercased; never index MD
+// with the mixed-case constant).
+func isInternalRequest(ctx context.Context, carrier propagation.TextMapCarrier) bool {
+	if carrier != nil {
+		if v := strings.TrimSpace(carrier.Get(httpx.HeaderGrpcInternal)); v != "" {
+			return true
+		}
+	}
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if v, ok := md[httpx.HeaderGrpcInternal]; ok && len(v) > 0 && v[0] != "" {
+		if vals := md.Get(httpx.HeaderGrpcInternal); len(vals) > 0 && vals[0] != "" {
 			return true
 		}
 	}
@@ -107,7 +118,7 @@ func isInternalRequest(ctx context.Context) bool {
 }
 
 func (p *trustedInternalPropagator) Extract(ctx context.Context, carrier propagation.TextMapCarrier) context.Context {
-	if isInternalRequest(ctx) {
+	if isInternalRequest(ctx, carrier) {
 		return p.real.Extract(ctx, carrier)
 	}
 	return ctx
