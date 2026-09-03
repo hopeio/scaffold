@@ -21,6 +21,7 @@ const (
 	Canceled           ErrCode = mix.Canceled
 	Unknown            ErrCode = mix.Unknown
 	InvalidArgument    ErrCode = mix.InvalidArgument
+	DeadlineExceeded   ErrCode = mix.DeadlineExceeded
 	NotFound           ErrCode = mix.NotFound
 	AlreadyExists      ErrCode = mix.AlreadyExists
 	PermissionDenied   ErrCode = mix.PermissionDenied

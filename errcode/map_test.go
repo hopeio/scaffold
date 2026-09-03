@@ -1,6 +1,7 @@
 package errcode_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -27,4 +28,16 @@ func TestMap_TypedPassThrough(t *testing.T) {
 		t.Fatal("nil")
 	}
 	_ = mix.Success
+}
+
+func TestMap_ContextDone(t *testing.T) {
+	if got := errcode.Map(context.Canceled, errcode.DBError); got != errcode.Canceled {
+		t.Fatalf("canceled -> %v, want Canceled", got)
+	}
+	if got := errcode.Map(context.DeadlineExceeded, errcode.DBError); got != errcode.DeadlineExceeded {
+		t.Fatalf("deadline -> %v, want DeadlineExceeded", got)
+	}
+	if !errcode.IsContextDone(context.Canceled) || errcode.IsContextDone(errors.New("x")) {
+		t.Fatal("IsContextDone")
+	}
 }
