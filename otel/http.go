@@ -97,10 +97,13 @@ const HeaderInternalAuth = "X-Internal-Auth"
 //
 // The check compares the secret **value**, not just header presence: a
 // presence-only marker can be set by any client and provides no boundary.
-// An empty secret means nothing is trusted (safe default).
+// An empty secret (or nil secret fn) means nothing is trusted (safe default).
+//
+// secret is called on each Extract so hot-reloaded config stays in sync with
+// business-side IsInternalCall checks that also read the live secret.
 //
 // Use this on HTTP ingress to mirror grpc's PublicEndpointFn behaviour.
-func TrustedInternalPropagator(real propagation.TextMapPropagator, header, secret string) propagation.TextMapPropagator {
+func TrustedInternalPropagator(real propagation.TextMapPropagator, header string, secret func() string) propagation.TextMapPropagator {
 	if real == nil {
 		real = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
 	}
@@ -110,7 +113,7 @@ func TrustedInternalPropagator(real propagation.TextMapPropagator, header, secre
 type trustedInternalPropagator struct {
 	real   propagation.TextMapPropagator
 	header string
-	secret string
+	secret func() string
 }
 
 // isInternalRequest reports whether the call carries the internal auth header
@@ -121,7 +124,11 @@ type trustedInternalPropagator struct {
 // contexts, fall back to metadata.Get (keys are lowercased; never index MD
 // with the mixed-case constant).
 func (p *trustedInternalPropagator) isInternalRequest(ctx context.Context, carrier propagation.TextMapCarrier) bool {
-	if p.header == "" || p.secret == "" {
+	if p.header == "" || p.secret == nil {
+		return false
+	}
+	want := strings.TrimSpace(p.secret())
+	if want == "" {
 		return false
 	}
 	var got string
@@ -135,10 +142,10 @@ func (p *trustedInternalPropagator) isInternalRequest(ctx context.Context, carri
 			}
 		}
 	}
-	return got != "" && internalAuthMatch(got, p.secret)
+	return got != "" && internalAuthMatch(got, want)
 }
 
-// internalAuthMatch 常量时间比较，避免通过响应时间侧信道逐字节猜密钥。
+// internalAuthMatch is a constant-time compare to avoid timing side channels.
 func internalAuthMatch(got, want string) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }

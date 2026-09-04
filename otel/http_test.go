@@ -20,8 +20,12 @@ func testTraceparent() string {
 	return "00-" + testTraceID + "-" + testSpanID + "-01"
 }
 
+func staticSecret(s string) func() string {
+	return func() string { return s }
+}
+
 func TestTrustedInternalPropagator_ExtractHTTPHeader(t *testing.T) {
-	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, testSecret)
+	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, staticSecret(testSecret))
 	tp := testTraceparent()
 
 	// External request (no internal auth header) must not inherit the client trace.
@@ -53,7 +57,7 @@ func TestTrustedInternalPropagator_ExtractHTTPHeader(t *testing.T) {
 }
 
 func TestTrustedInternalPropagator_ExtractGRPCMetadata(t *testing.T) {
-	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, testSecret)
+	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, staticSecret(testSecret))
 	carrier := propagation.MapCarrier{"traceparent": testTraceparent()}
 
 	// Internal call: incoming MD carries the auth header with the matching secret.
@@ -84,7 +88,7 @@ func TestTrustedInternalPropagator_ExtractGRPCMetadata(t *testing.T) {
 func TestTrustedInternalPropagator_EmptySecretTrustsNothing(t *testing.T) {
 	// Empty secret = feature disabled: never trust anything (safe default),
 	// even when a caller sends the header with any value.
-	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, "")
+	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, staticSecret(""))
 	carrier := propagation.MapCarrier{"traceparent": testTraceparent()}
 
 	ctxInt := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
@@ -92,5 +96,25 @@ func TestTrustedInternalPropagator_EmptySecretTrustsNothing(t *testing.T) {
 	))
 	if sc := trace.SpanContextFromContext(p.Extract(ctxInt, carrier)); sc.IsValid() {
 		t.Fatalf("empty secret must trust nothing; got %v", sc)
+	}
+}
+
+func TestTrustedInternalPropagator_LiveSecretReload(t *testing.T) {
+	cur := testSecret
+	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, func() string { return cur })
+	tp := testTraceparent()
+
+	h := make(http.Header)
+	h.Set("traceparent", tp)
+	h.Set(HeaderInternalAuth, testSecret)
+	ctx := p.Extract(context.Background(), propagation.HeaderCarrier(h))
+	if sc := trace.SpanContextFromContext(ctx); !sc.IsValid() {
+		t.Fatal("matching live secret should inherit")
+	}
+
+	cur = "rotated-secret"
+	ctx2 := p.Extract(context.Background(), propagation.HeaderCarrier(h))
+	if sc := trace.SpanContextFromContext(ctx2); sc.IsValid() {
+		t.Fatal("after rotation, old header value must not inherit")
 	}
 }
