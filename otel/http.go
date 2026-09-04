@@ -2,6 +2,7 @@ package otel
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 	"net/http/httptrace"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	httpx "github.com/hopeio/gox/net/http"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -80,45 +80,71 @@ func (p *HTTPPlugin) Handler(h http.Handler, operation string) http.Handler {
 	return otelhttp.NewHandler(h, operation, p.Opts...)
 }
 
+// HeaderInternalAuth is the shared header marking trusted internal
+// service-to-service calls. HTTP and gRPC use the same name. The trust check
+// must compare the secret **value**, not just header presence: a presence-only
+// marker can be set by any client and gives no boundary. Each protocol
+// normalizes case on the read side (net/http and grpc metadata.Get both
+// lowercase), so this is the canonical mixed-case form. The gateway must
+// convert inbound HTTP headers to gRPC metadata via metadata.New (lower-casing)
+// so both links stay consistent.
+const HeaderInternalAuth = "X-Internal-Auth"
+
 // TrustedInternalPropagator wraps a real propagator so that ONLY requests
-// carrying the internal-only `Grpc-Internal` metadata header are trusted and
-// have their incoming trace context extracted (inherited). External requests
-// (no header) are not extracted, so the server starts a fresh root span.
+// carrying `header: secret` are trusted and have their incoming trace context
+// extracted (inherited). Everything else is not extracted, so the server
+// starts a fresh root span.
+//
+// The check compares the secret **value**, not just header presence: a
+// presence-only marker can be set by any client and provides no boundary.
+// An empty secret means nothing is trusted (safe default).
+//
 // Use this on HTTP ingress to mirror grpc's PublicEndpointFn behaviour.
-func TrustedInternalPropagator(real propagation.TextMapPropagator) propagation.TextMapPropagator {
+func TrustedInternalPropagator(real propagation.TextMapPropagator, header, secret string) propagation.TextMapPropagator {
 	if real == nil {
 		real = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
 	}
-	return &trustedInternalPropagator{real: real}
+	return &trustedInternalPropagator{real: real, header: header, secret: secret}
 }
 
 type trustedInternalPropagator struct {
-	real propagation.TextMapPropagator
+	real   propagation.TextMapPropagator
+	header string
+	secret string
 }
 
-// isInternalRequest reports whether the call carries the internal-only
-// `Grpc-Internal` marker (see gox httpx.HeaderGrpcInternal).
+// isInternalRequest reports whether the call carries the internal auth header
+// with the matching secret.
 //
 // For HTTP (otelhttp), Extract runs with a HeaderCarrier before gRPC metadata
 // exists on ctx — the header must be read from the carrier. For gRPC-shaped
 // contexts, fall back to metadata.Get (keys are lowercased; never index MD
 // with the mixed-case constant).
-func isInternalRequest(ctx context.Context, carrier propagation.TextMapCarrier) bool {
+func (p *trustedInternalPropagator) isInternalRequest(ctx context.Context, carrier propagation.TextMapCarrier) bool {
+	if p.header == "" || p.secret == "" {
+		return false
+	}
+	var got string
 	if carrier != nil {
-		if v := strings.TrimSpace(carrier.Get(httpx.HeaderGrpcInternal)); v != "" {
-			return true
+		got = strings.TrimSpace(carrier.Get(p.header))
+	}
+	if got == "" {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if vals := md.Get(p.header); len(vals) > 0 {
+				got = strings.TrimSpace(vals[0])
+			}
 		}
 	}
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if vals := md.Get(httpx.HeaderGrpcInternal); len(vals) > 0 && vals[0] != "" {
-			return true
-		}
-	}
-	return false
+	return got != "" && internalAuthMatch(got, p.secret)
+}
+
+// internalAuthMatch 常量时间比较，避免通过响应时间侧信道逐字节猜密钥。
+func internalAuthMatch(got, want string) bool {
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
 func (p *trustedInternalPropagator) Extract(ctx context.Context, carrier propagation.TextMapCarrier) context.Context {
-	if isInternalRequest(ctx, carrier) {
+	if p.isInternalRequest(ctx, carrier) {
 		return p.real.Extract(ctx, carrier)
 	}
 	return ctx
