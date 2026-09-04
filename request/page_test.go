@@ -1,15 +1,15 @@
-package page
+package param
 
 import "testing"
 
 func TestClampFillsInDefaults(t *testing.T) {
 	no, size := Clamp(0, 0)
-	if no != 1 || size != Default {
-		t.Fatalf("Clamp(0, 0) = %d, %d; want 1, %d", no, size, Default)
+	if no != 1 || size != DefaultPageSize {
+		t.Fatalf("Clamp(0, 0) = %d, %d; want 1, %d", no, size, DefaultPageSize)
 	}
 }
 
-// pageSize 为 0 时 gormx 不生成 LIMIT，会把整张表拉回来。
+// gormx emits no LIMIT for pageSize 0, which would fetch the whole table.
 func TestClampNeverReturnsAnUnboundedPage(t *testing.T) {
 	if _, size := Clamp(3, 0); size == 0 {
 		t.Fatal("Clamp returned pageSize 0, which means no LIMIT")
@@ -17,8 +17,8 @@ func TestClampNeverReturnsAnUnboundedPage(t *testing.T) {
 }
 
 func TestClampCapsOversizedPages(t *testing.T) {
-	if _, size := Clamp(1, 100000); size != Max {
-		t.Fatalf("Clamp pageSize = %d, want %d", size, Max)
+	if _, size := Clamp(1, 100000); size != MaxPageSize {
+		t.Fatalf("Clamp pageSize = %d, want %d", size, MaxPageSize)
 	}
 }
 
@@ -31,7 +31,7 @@ func TestClampKeepsReasonableValues(t *testing.T) {
 
 func TestClampIntGuardsAgainstNegatives(t *testing.T) {
 	no, size := ClampInt(-5, -1)
-	if no != 1 || size != int(Default) {
-		t.Fatalf("ClampInt(-5, -1) = %d, %d; want 1, %d", no, size, Default)
+	if no != 1 || size != int(DefaultPageSize) {
+		t.Fatalf("ClampInt(-5, -1) = %d, %d; want 1, %d", no, size, DefaultPageSize)
 	}
 }
