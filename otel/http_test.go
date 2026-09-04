@@ -12,7 +12,7 @@ import (
 )
 
 func TestTrustedInternalPropagator_ExtractHTTPHeader(t *testing.T) {
-	p := TrustedInternalPropagator(propagation.TraceContext{})
+	p := TrustedInternalPropagator(propagation.TraceContext{}, HeaderInternalAuth, InternalAuthSecretValue())
 
 	traceID := "4bf92f3577b34da6a3ce929d0e0e4736"
 	spanID := "00f067aa0ba902b7"
@@ -27,7 +27,7 @@ func TestTrustedInternalPropagator_ExtractHTTPHeader(t *testing.T) {
 
 	hInt := make(http.Header)
 	hInt.Set("traceparent", tp)
-	hInt.Set(httpx.HeaderGrpcInternal, httpx.HeaderGrpcInternal)
+	hInt.Set(HeaderInternalAuth, InternalAuthSecretValue())
 	ctxInt := p.Extract(context.Background(), propagation.HeaderCarrier(hInt))
 	sc := trace.SpanContextFromContext(ctxInt)
 	if !sc.IsValid() || sc.TraceID().String() != traceID {

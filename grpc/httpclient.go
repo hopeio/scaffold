@@ -86,9 +86,9 @@ func Call[Req, Resp any, ReqPtr mix.ProtoMessage[Req], RespPtr mix.ProtoMessage[
 	}
 
 	// Check the gRPC trailer status.
-	grpcStatus := resp.Trailer.Get(httpx.HeaderGrpcStatus)
+	grpcStatus := resp.Trailer.Get(mix.HeaderGrpcStatus)
 	if grpcStatus != "" && grpcStatus != "0" {
-		grpcMessage := resp.Trailer.Get(httpx.HeaderGrpcMessage)
+		grpcMessage := resp.Trailer.Get(mix.HeaderGrpcMessage)
 		code, _ := strconv.Atoi(grpcStatus)
 		return nil, status.Error(codes.Code(code), grpcMessage)
 	}
