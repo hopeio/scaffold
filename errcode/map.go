@@ -20,6 +20,14 @@ func IsContextDone(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
+// LogError logs err at Error unless it is context cancel/deadline (then no-op).
+func LogError(msg string, err error, fields ...zap.Field) {
+	if err == nil || IsContextDone(err) {
+		return
+	}
+	log.Errorw(msg, append(fields, zap.Error(err))...)
+}
+
 // Map 把 data 层原始错误收成对外 errcode：已是 GRPCStatus（含 ErrCode、*ErrResp）
 // 则原样返回；context cancel/deadline 映射为 Canceled/DeadlineExceeded 且不打 ERROR；
 // 否则打日志并返回 code（不带 Msg，不 Wrap）。

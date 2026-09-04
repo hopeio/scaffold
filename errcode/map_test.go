@@ -41,3 +41,10 @@ func TestMap_ContextDone(t *testing.T) {
 		t.Fatal("IsContextDone")
 	}
 }
+
+func TestLogError_SkipsContextDone(t *testing.T) {
+	// Must not panic; cancel/deadline are silent.
+	errcode.LogError("x", context.Canceled)
+	errcode.LogError("x", context.DeadlineExceeded)
+	errcode.LogError("x", errors.New("real"))
+}
