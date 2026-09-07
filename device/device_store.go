@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"reflect"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -68,6 +69,7 @@ type DeviceWebRow struct {
 func (DeviceWebRow) TableName() string { return "device_web" }
 
 // DeviceRow 设备主表：引用各域 MD5，不含 HostLive / NetworkLive。
+// ID 即客户端 Device-Info-Md5（稳定域 protobuf MD5）。
 type DeviceRow struct {
 	ID         string            `json:"id" gorm:"primaryKey;size:32"`
 	Platform   string            `json:"platform" gorm:"size:32"`
@@ -80,6 +82,7 @@ type DeviceRow struct {
 	NetworkID  string            `json:"networkId" gorm:"size:32;index"`
 	WebID      string            `json:"webId" gorm:"size:32;index"`
 	Ext        map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
+	LastSeenAt time.Time         `json:"lastSeenAt" gorm:"index"`
 }
 
 func (DeviceRow) TableName() string { return "device" }
@@ -178,9 +181,14 @@ func Upsert(db *gorm.DB, info *DeviceInfo, id string) (string, error) {
 		NetworkID:  netID,
 		WebID:      webID,
 		Ext:        info.Ext,
+		LastSeenAt: time.Now(),
 	}
 	row.ID = id
-	err = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error
+	// 同指纹重复上报只刷新最近活跃时间；域引用不变（id 已是稳定内容哈希）。
+	err = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"last_seen_at"}),
+	}).Create(&row).Error
 	return id, err
 }
 
