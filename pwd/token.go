@@ -136,7 +136,7 @@ func checkTime(body proto.Message, now time.Time) error {
 		return nil
 	}
 	unix := now.Unix()
-	if exp := e.GetExp(); exp != 0 && unix >= exp {
+	if exp := e.GetExp(); exp != 0 && unix > exp {
 		return ErrExpired
 	}
 	if nbf := e.GetNbf(); nbf != 0 && unix < nbf {

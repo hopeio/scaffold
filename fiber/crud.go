@@ -14,6 +14,7 @@ import (
 	gateway "github.com/hopeio/mix/contrib/fiber"
 	"github.com/hopeio/mix"
 	response "github.com/hopeio/protobuf/response"
+	param "github.com/hopeio/scaffold/request"
 	"github.com/hopeio/scaffold/errcode"
 	"gorm.io/gorm"
 )
@@ -59,8 +60,8 @@ func Save[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 	Log(http.MethodPost, url, "create "+typ)
 	registerRoute(server, http.MethodPut, url, cu)
 	Log(http.MethodPut, url, "update "+typ)
-	registerRoute(server, http.MethodPost, url, cu)
-	Log(http.MethodPost, url, "update "+typ)
+	registerRoute(server, http.MethodPost, url+"/edit", cu)
+	Log(http.MethodPost, url+"/edit", "update "+typ)
 	url = apiPrefix + typ + "/:id"
 	registerRoute(server, http.MethodPut, url, append(middleware, func(c fiber.Ctx) error {
 		var data T
@@ -146,6 +147,7 @@ func List[T any](server *fiber.App, db *gorm.DB, middleware ...fiber.Handler) {
 			return nil
 		}
 		var list []*T
+		req.Pagination.No, req.Pagination.Size = param.Clamp(req.Pagination.No, req.Pagination.Size)
 		if clause := gormx.PaginationExpr(req.Pagination.No, req.Pagination.Size); clause != nil {
 			db = db.Clauses(clause)
 		}

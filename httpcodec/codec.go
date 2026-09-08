@@ -99,7 +99,6 @@ func handleResponse(w http.ResponseWriter, r *http.Request, message proto.Messag
 
 func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	s := gateway.ErrRespFromError(err)
-	delete(r.Header, httpx.HeaderTrailer)
 	buf, contentType, _ := marshalForRequest(r, s)
 	header := w.Header()
 	header.Set(httpx.HeaderContentType, contentType)

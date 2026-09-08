@@ -35,10 +35,12 @@ func Map(err error, code ErrCode) error {
 	if err == nil {
 		return nil
 	}
-	if _, ok := err.(grpcStatus); ok {
+	var gs grpcStatus
+	if errors.As(err, &gs) {
 		return err
 	}
-	if _, ok := err.(*mix.ErrResp); ok {
+	var er *mix.ErrResp
+	if errors.As(err, &er) {
 		return err
 	}
 	if errors.Is(err, context.Canceled) {

@@ -1,7 +1,7 @@
 package model
 
 type Upload struct {
-	ID           uint64 `gorm:"primary_key" json:"id"`
+	ID           uint64 `gorm:"primaryKey" json:"id"`
 	Name         string `gorm:"type:varchar(100);not null" json:"name"`
 	OriginalName string `gorm:"type:varchar(100);not null" json:"original_name"`
 	URL          string `json:"url"`

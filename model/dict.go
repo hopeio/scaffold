@@ -16,6 +16,10 @@ type Dict struct {
 	Seq   uint32 `json:"seq" gorm:"comment:排序"`
 }
 
+// TableName pins the table to "dict" so the model and the db.Table("dict")
+// helpers in this file stay consistent.
+func (Dict) TableName() string { return "dict" }
+
 
 // DictGetValue looks up a single value from the dict table by type and key.
 func DictGetValue(db *gorm.DB, typ int, key string) (string, error) {

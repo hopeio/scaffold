@@ -18,6 +18,7 @@ func (n NullString) String() string {
 
 // Export writes sql.Rows to an Excel file at the given filename, using column names as the header row.
 func Export(rows *sql.Rows, filename string) error {
+	defer rows.Close()
 	f := excelize.NewFile()
 	columns, err := rows.Columns()
 	if err != nil {
@@ -51,10 +52,6 @@ func Export(rows *sql.Rows, filename string) error {
 			return err
 		}
 		row++
-	}
-	err = rows.Close()
-	if err != nil {
-		return err
 	}
 	return f.SaveAs(filename)
 }

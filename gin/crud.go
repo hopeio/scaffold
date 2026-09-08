@@ -9,6 +9,7 @@ import (
 	sqlx "github.com/hopeio/gox/database/sql"
 	gateway "github.com/hopeio/mix/contrib/gin"
 	response "github.com/hopeio/protobuf/response"
+	param "github.com/hopeio/scaffold/request"
 	"github.com/hopeio/scaffold/errcode"
 	"github.com/hopeio/mix"
 
@@ -135,6 +136,7 @@ func List[T any](server *gin.Engine, db *gorm.DB, middleware ...gin.HandlerFunc)
 			return
 		}
 		var list []*T
+		req.Pagination.No, req.Pagination.Size = param.Clamp(req.Pagination.No, req.Pagination.Size)
 		if clause := gormx.PaginationExpr(req.Pagination.No, req.Pagination.Size); clause != nil {
 			db = db.Clauses(clause)
 		}

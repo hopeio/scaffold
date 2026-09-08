@@ -17,30 +17,39 @@ type DateFilter struct {
 }
 
 // Range resolves Begin/End from explicit values or the Type preset (1=today, 2=this week, 3=this month, 4=this year).
+// An explicitly set Begin/End is kept; only the missing side falls back to the preset. Preset begins are
+// truncated to midnight of the day they land on.
 func (d *DateFilter) Range() (time.Time, time.Time) {
 	var zero time.Time
 	if d.Begin != zero && d.End != zero {
 		return d.Begin, d.End
 	}
-	// When using a preset type the end is always "now".
 	now := time.Now()
-	year, month, day := time.Now().Date()
-	d.End = now
-	switch d.Type {
-	case 1:
-		d.Begin = time.Date(year, month, day, 0, 0, 0, 0, time.Local)
-	case 2:
-		weekday := now.Weekday()
-		if weekday == time.Sunday {
-			weekday = 6
-		} else {
-			weekday -= 1
-		}
-		d.Begin = now.AddDate(0, 0, -int(weekday))
-	case 3:
-		d.Begin = time.Date(year, month, 0, 0, 0, 0, 0, time.Local)
-	case 4:
-		d.Begin = time.Date(year, 0, 0, 0, 0, 0, 0, time.Local)
+	year, month, day := now.Date()
+	end := d.End
+	if end == zero {
+		end = now
 	}
-	return d.Begin, d.End
+	begin := d.Begin
+	if begin == zero {
+		switch d.Type {
+		case 1:
+			begin = time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+		case 2:
+			weekday := now.Weekday()
+			if weekday == time.Sunday {
+				weekday = 6
+			} else {
+				weekday -= 1
+			}
+			ws := now.AddDate(0, 0, -int(weekday))
+			begin = time.Date(ws.Year(), ws.Month(), ws.Day(), 0, 0, 0, 0, time.Local)
+		case 3:
+			begin = time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
+		case 4:
+			begin = time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
+		}
+	}
+	d.Begin, d.End = begin, end
+	return begin, end
 }
