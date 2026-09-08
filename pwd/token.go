@@ -136,7 +136,8 @@ func checkTime(body proto.Message, now time.Time) error {
 		return nil
 	}
 	unix := now.Unix()
-	if exp := e.GetExp(); exp != 0 && unix > exp {
+	// RFC 7519: current time must be strictly before exp; expire when unix >= exp.
+	if exp := e.GetExp(); exp != 0 && unix >= exp {
 		return ErrExpired
 	}
 	if nbf := e.GetNbf(); nbf != 0 && unix < nbf {
