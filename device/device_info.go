@@ -58,6 +58,16 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 // DeviceInfo 客户端环境信息（按域拆分嵌套）。
 // 服务端可补 networkLive.ip / web.userAgent / networkLive 地理头。
 type DeviceInfo struct {
+	// StableMD5 is the content-addressed primary key of this device
+	// (DeviceRow.ID): the MD5 of the stable domain, reported via the
+	// Device-Info-Md5 header. It is the same value that DeviceRow persists.
+	//
+	// Excluded from JSON and gorm on purpose: a content-addressed key must
+	// not be part of the content it hashes (otherwise the digest would
+	// depend on itself). Callers that serialize a DeviceInfo to compute its
+	// MD5 (see ContentMD5) therefore never see this field.
+	StableMD5 string `json:"-" gorm:"-"`
+
 	Platform   string `json:"platform" gorm:"size:32"`   // android|ios|macos|windows|linux|web
 	ClientKind string `json:"clientKind" gorm:"size:32"` // mobile|desktop|web
 
