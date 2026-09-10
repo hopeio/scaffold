@@ -1,14 +1,12 @@
 /*
  * Copyright 2024 hopeio. All rights reserved.
- * Licensed under the MIT License that can be found in the LICENSE file.
+ * Licensed under the MIT License. See the LICENSE file in the project root for more information.
+ * @Created by jyb
  */
 
 package device
 
 import (
-	"crypto/md5"
-	"encoding/hex"
-	"encoding/json"
 	"reflect"
 	"time"
 
@@ -16,8 +14,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// 分表行：各域内容寻址，主键为内容 MD5（32 hex）。
+// 分表行：各域内容寻址，主键为内容哈希（32 hex）。
 // HostLive / NetworkLive 不入库。
+//
+// 主键算法由调用方提供（见 Upsert 的 id / DomainIDs）：调用方对 protobuf
+// 稳定域 / 各域二进制做确定性 MD5，保证与客户端逐字节一致。本包不引入
+// 第二套（JSON）哈希，避免同名字段在两处口径不同。
 
 type DeviceAppRow struct {
 	ID string `json:"id" gorm:"primaryKey;size:32"`
@@ -68,7 +70,7 @@ type DeviceWebRow struct {
 
 func (DeviceWebRow) TableName() string { return "device_web" }
 
-// DeviceRow 设备主表：引用各域 MD5，不含 HostLive / NetworkLive。
+// DeviceRow 设备主表：引用各域主键，不含 HostLive / NetworkLive。
 // ID 即客户端 Device-Info-Md5（稳定域 protobuf MD5）。
 type DeviceRow struct {
 	ID         string            `json:"id" gorm:"primaryKey;size:32"`
@@ -87,27 +89,27 @@ type DeviceRow struct {
 
 func (DeviceRow) TableName() string { return "device" }
 
-// ContentMD5 对可 JSON 序列化内容做 MD5（内容寻址主键）。
-func ContentMD5(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	sum := md5.Sum(b)
-	return hex.EncodeToString(sum[:]), nil
+// DomainIDs 各域内容寻址主键（32 hex）；空串表示该域为零值、不建行。
+// 调用方必须用与主表 id 相同的算法（protobuf 确定性序列化）对**各域子消息**
+// 单独计算，不得换成其它序列化口径。
+type DomainIDs struct {
+	App      string
+	Hardware string
+	Ident    string
+	OS       string
+	Host     string
+	Network  string
+	Web      string
 }
 
 func isZero(v any) bool {
 	return reflect.ValueOf(v).IsZero()
 }
 
-func upsertByMD5[T any](db *gorm.DB, payload T) (id string, err error) {
-	if isZero(payload) {
-		return "", nil
-	}
-	id, err = ContentMD5(payload)
-	if err != nil {
-		return "", err
+// upsertDomain 写入单个域行；id 为空或 payload 为零值时跳过（不建空行）。
+func upsertDomain[T any](db *gorm.DB, id string, payload T) error {
+	if id == "" || isZero(payload) {
+		return nil
 	}
 	var row any
 	switch p := any(payload).(type) {
@@ -126,66 +128,53 @@ func upsertByMD5[T any](db *gorm.DB, payload T) (id string, err error) {
 	case DeviceWebInfo:
 		row = &DeviceWebRow{ID: id, DeviceWebInfo: p}
 	default:
-		return "", gorm.ErrInvalidData
+		return gorm.ErrInvalidData
 	}
-	err = db.Clauses(clause.OnConflict{DoNothing: true}).Create(row).Error
-	return id, err
+	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(row).Error
 }
 
 // Upsert 分表写入稳定域；跳过 HostLive / NetworkLive。返回主表 MD5。
-// id 为预计算的主表内容寻址主键（调用方需对 protobuf 稳定域二进制算好 MD5，
-// 保证与服务端/客户端算法一致），必填；为空视为非法入参。
-func Upsert(db *gorm.DB, info *DeviceInfo, id string) (string, error) {
+// id 与 ids 均由调用方预计算（对 protobuf 稳定域 / 各域二进制做确定性 MD5，
+// 与客户端算法一致），必填；id 为空视为非法入参。
+func Upsert(db *gorm.DB, info *DeviceInfo, id string, ids DomainIDs) (string, error) {
 	if info == nil || db == nil || id == "" {
 		return "", gorm.ErrInvalidData
 	}
 	info.Normalize()
 
-	appID, err := upsertByMD5(db, info.App)
-	if err != nil {
-		return "", err
-	}
-	hwID, err := upsertByMD5(db, info.Hardware)
-	if err != nil {
-		return "", err
-	}
-	identID, err := upsertByMD5(db, info.ID)
-	if err != nil {
-		return "", err
-	}
-	osID, err := upsertByMD5(db, info.OS)
-	if err != nil {
-		return "", err
-	}
-	hostID, err := upsertByMD5(db, info.Host)
-	if err != nil {
-		return "", err
-	}
-	netID, err := upsertByMD5(db, info.Network)
-	if err != nil {
-		return "", err
-	}
-	webID, err := upsertByMD5(db, info.Web)
-	if err != nil {
-		return "", err
+	for _, d := range []struct {
+		id      string
+		payload any
+	}{
+		{ids.App, info.App},
+		{ids.Hardware, info.Hardware},
+		{ids.Ident, info.ID},
+		{ids.OS, info.OS},
+		{ids.Host, info.Host},
+		{ids.Network, info.Network},
+		{ids.Web, info.Web},
+	} {
+		if err := upsertDomain(db, d.id, d.payload); err != nil {
+			return "", err
+		}
 	}
 
 	row := DeviceRow{
 		Platform:   info.Platform,
 		ClientKind: info.ClientKind,
-		AppID:      appID,
-		HardwareID: hwID,
-		IdentID:    identID,
-		OsID:       osID,
-		HostID:     hostID,
-		NetworkID:  netID,
-		WebID:      webID,
+		AppID:      ids.App,
+		HardwareID: ids.Hardware,
+		IdentID:    ids.Ident,
+		OsID:       ids.OS,
+		HostID:     ids.Host,
+		NetworkID:  ids.Network,
+		WebID:      ids.Web,
 		Ext:        info.Ext,
 		LastSeenAt: time.Now(),
 	}
 	row.ID = id
 	// 同指纹重复上报只刷新最近活跃时间；域引用不变（id 已是稳定内容哈希）。
-	err = db.Clauses(clause.OnConflict{
+	err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"last_seen_at"}),
 	}).Create(&row).Error

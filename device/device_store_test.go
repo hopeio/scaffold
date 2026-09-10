@@ -38,18 +38,26 @@ func TestUpsertSplitTables(t *testing.T) {
 			Lng:         116.4,
 		},
 	}
-	id, err := ContentMD5(info)
-	if err != nil {
-		t.Fatal(err)
+	// 主键与各域主键都由调用方预计算（生产实现是 protobuf 确定性 MD5）；
+	// 本测试只关心存储行为，用固定串即可。
+	const deviceID = "fixture-stable-md5"
+	ids := DomainIDs{
+		App:      "fixture-app-md5",
+		Hardware: "fixture-hw-md5",
+		Ident:    "fixture-ident-md5",
+		OS:       "fixture-os-md5",
+		Host:     "fixture-host-md5",
+		Network:  "fixture-net-md5",
+		// Web 留空：空域不应建行。
 	}
-	id1, err := Upsert(db, info, id)
+	id1, err := Upsert(db, info, deviceID, ids)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if id1 == "" {
 		t.Fatal("empty id")
 	}
-	id2, err := Upsert(db, info, id)
+	id2, err := Upsert(db, info, deviceID, ids)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,5 +77,12 @@ func TestUpsertSplitTables(t *testing.T) {
 	}
 	if appN != 1 {
 		t.Fatalf("app rows: %d", appN)
+	}
+	var webN int64
+	if err := db.Model(&DeviceWebRow{}).Count(&webN).Error; err != nil {
+		t.Fatal(err)
+	}
+	if webN != 0 {
+		t.Fatalf("empty domain must not create rows, got %d", webN)
 	}
 }

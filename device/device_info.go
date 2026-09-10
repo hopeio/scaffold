@@ -64,8 +64,8 @@ type DeviceInfo struct {
 	//
 	// Excluded from JSON and gorm on purpose: a content-addressed key must
 	// not be part of the content it hashes (otherwise the digest would
-	// depend on itself). Callers that serialize a DeviceInfo to compute its
-	// MD5 (see ContentMD5) therefore never see this field.
+	// depend on itself). Callers that marshal a DeviceInfo to compute its
+	// MD5 (protobuf, deterministic) therefore never see this field.
 	StableMD5 string `json:"-" gorm:"-"`
 
 	Platform   string `json:"platform" gorm:"size:32"`   // android|ios|macos|windows|linux|web
