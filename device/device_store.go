@@ -74,9 +74,9 @@ func (DeviceWebRow) TableName() string { return "device_web" }
 // ID 即客户端 Device-Info-Md5（稳定域 protobuf MD5）。
 type DeviceRow struct {
 	ID         string            `json:"id" gorm:"primaryKey;size:32"`
-	Platform   string            `json:"platform" gorm:"size:32"`
-	ClientKind string            `json:"clientKind" gorm:"size:32"`
-	AppID      string            `json:"appId" gorm:"size:32;index"`
+	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
+	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
+	AppID      string         `json:"appId" gorm:"size:32;index"`
 	HardwareID string            `json:"hardwareId" gorm:"size:32;index"`
 	IdentID    string            `json:"identId" gorm:"size:32;index"`
 	OsID       string            `json:"osId" gorm:"size:32;index"`
@@ -136,7 +136,7 @@ func upsertDomain[T any](db *gorm.DB, id string, payload T) error {
 // Upsert 分表写入稳定域；跳过 HostLive / NetworkLive。返回主表 MD5。
 // id 与 ids 均由调用方预计算（对 protobuf 稳定域 / 各域二进制做确定性 MD5，
 // 与客户端算法一致），必填；id 为空视为非法入参。
-func Upsert(db *gorm.DB, info *DeviceInfo, id string, ids DomainIDs) (string, error) {
+func Upsert(db *gorm.DB, info *Device, id string, ids DomainIDs) (string, error) {
 	if info == nil || db == nil || id == "" {
 		return "", gorm.ErrInvalidData
 	}

@@ -23,7 +23,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	if err := AutoMigrateDeviceTables(db); err != nil {
 		t.Fatal(err)
 	}
-	info := &DeviceInfo{
+	info := &Device{
 		Platform:   PlatformIOS,
 		ClientKind: ClientKindMobile,
 		App:        DeviceAppInfo{Code: "hoper", Version: "2.0.0"},

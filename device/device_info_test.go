@@ -1,118 +1,108 @@
 /*
  * Copyright 2024 hopeio. All rights reserved.
  * Licensed under the MIT License that can be found in the LICENSE file.
+ * @Created by jyb
  */
 
 package device
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 )
 
-func TestDeviceFromHeaderJSON(t *testing.T) {
-	h := http.Header{}
-	h.Set("Device-Info", `{
-		"platform":"ios","clientKind":"mobile",
-		"app":{"code":"hoper","version":"2.0.0"},
-		"hardware":{"modelName":"iPhone 16"},
-		"os":{"name":"iOS","version":"18.0","arch":"arm64"},
-		"id":{
-			"did":"biz-did","idfv":"idfv-1","idfa":"idfa-1",
-			"aaid":"aaid-1","oaid":"oaid-1","imei":"860000000000001",
-			"mac":"AA:BB:CC:DD:EE:FF"
-		}
-	}`)
+func TestLiteFromHeader(t *testing.T) {
+	h := make(http.Header)
+	h.Set("Device-Info", `{"platform":"ios","id":{"did":"should-ignore"}}`)
+	h.Set("Platform-Info", "ios;mobile;17.0")
+	h.Set("App-Info", "rfv;1.2.3")
+	h.Set("Location", "121.4;31.2;上海")
+	h.Set("User-Agent", "app/1.0")
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
-	info := DeviceFromHeader(h)
-	if info == nil {
-		t.Fatal("nil")
+	h.Set("Device-Info-Md5", "abc")
+	h.Set(HeaderRamAvail, "1024")
+	h.Set(HeaderDiskFree, "500000")
+	h.Set(HeaderNetworkType, "wifi")
+
+	lite := LiteFromHeader(h)
+	if lite.Empty() {
+		t.Fatal("expected lite")
 	}
-	if info.Platform != PlatformIOS || info.ClientKind != ClientKindMobile {
-		t.Fatalf("platform: %+v", info)
+	if lite.Platform != DevicePlatformIos || lite.ClientKind != ClientKindMobile || lite.Version != "17.0" || lite.AppCode != "rfv" || lite.AppVersion != "1.2.3" {
+		t.Fatalf("app: %+v", lite)
 	}
-	if info.DisplayName() != "iPhone 16" {
-		t.Fatalf("display: %q", info.DisplayName())
+	if lite.Area != "上海" || lite.Lng != 121.4 || lite.Lat != 31.2 {
+		t.Fatalf("loc: %+v", lite)
 	}
-	if info.OSDisplay() != "iOS 18.0" {
-		t.Fatalf("os: %q", info.OSDisplay())
+	if lite.UserAgent != "app/1.0" {
+		t.Fatalf("ua: %q", lite.UserAgent)
 	}
-	if info.PrimaryDeviceNo() != "biz-did" {
-		t.Fatalf("primary: %q", info.PrimaryDeviceNo())
+	if lite.IP == nil || lite.IP.String() != "10.0.0.1" {
+		t.Fatalf("ip: %v", lite.IP)
 	}
-	if info.ID.IDFV != "idfv-1" || info.ID.OAID != "oaid-1" || info.ID.AAID != "aaid-1" {
-		t.Fatalf("ids: %+v", info.ID)
+	if lite.Md5 != "abc" {
+		t.Fatalf("md5: %q", lite.Md5)
 	}
-	if info.ID.IMEI != "860000000000001" || info.ID.MAC != "AA:BB:CC:DD:EE:FF" {
-		t.Fatalf("imei/mac: %+v", info.ID)
+
+	host, netType := HostLiveFromHeader(h)
+	if !LivePresent(host, netType) {
+		t.Fatal("expected host live")
 	}
-	if info.NetworkLive.IP.String() != "10.0.0.1" {
-		t.Fatalf("xff ip: %v", info.NetworkLive.IP)
-	}
-	lite := info.Lite()
-	if lite.Platform != "ios" || lite.ClientKind != "mobile" || lite.AppCode != "hoper" {
-		t.Fatalf("lite: %+v", lite)
+	if host.RamAvailMB != 1024 || host.DiskFreeB != 500000 || netType != "wifi" {
+		t.Fatalf("host: %+v %q", host, netType)
 	}
 }
 
-func TestDeviceFromHeaderEmpty(t *testing.T) {
-	if DeviceFromHeader(http.Header{}) != nil {
-		t.Fatal("expected nil")
+func TestLiteFromHeaderEmpty(t *testing.T) {
+	if !LiteFromHeader(http.Header{}).Empty() {
+		t.Fatal("empty headers")
+	}
+	host, netType := HostLiveFromHeader(http.Header{})
+	if LivePresent(host, netType) {
+		t.Fatal("empty host live")
 	}
 }
 
-func TestAAIDGAIDAlias(t *testing.T) {
-	info := &DeviceInfo{ID: DeviceIDInfo{AAID: "x"}}
-	info.Normalize()
-	if info.ID.GAID != "x" {
-		t.Fatalf("gaid alias: %q", info.ID.GAID)
+func TestHostLiveFromHeaderReplace(t *testing.T) {
+	info := &Device{
+		Platform:    PlatformIOS,
+		NetworkLive: DeviceNetworkLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: "old"},
+		HostLive:    DeviceHostLiveInfo{RamAvailMB: 8, DiskFreeB: 99},
+	}
+	h := make(http.Header)
+	h.Set("Location", ";;new")
+	h.Set(HeaderRamAvail, "256")
+	lite := LiteFromHeader(h)
+	host, netType := HostLiveFromHeader(h)
+	info.HostLive = host
+	info.NetworkLive.Lng, info.NetworkLive.Lat, info.NetworkLive.Area = lite.Lng, lite.Lat, lite.Area
+	info.NetworkLive.NetworkType = netType
+	if lite.UserAgent != "" {
+		info.Web.UserAgent = lite.UserAgent
+	}
+	if info.Platform != PlatformIOS {
+		t.Fatal("stable fields must stay")
+	}
+	if info.NetworkLive.Area != "new" {
+		t.Fatalf("area overwrite: %q", info.NetworkLive.Area)
+	}
+	if info.NetworkLive.Lng != 0 || info.NetworkLive.Lat != 0 {
+		t.Fatalf("stale loc kept: %v %v", info.NetworkLive.Lng, info.NetworkLive.Lat)
+	}
+	if info.HostLive.RamAvailMB != 256 || info.HostLive.DiskFreeB != 0 {
+		t.Fatalf("hostLive: %+v", info.HostLive)
+	}
+	if info.NetworkLive.NetworkType != "" {
+		t.Fatalf("stale net type: %q", info.NetworkLive.NetworkType)
 	}
 }
 
-func TestTriState(t *testing.T) {
-	info := &DeviceInfo{
-		Hardware: DeviceHardwareInfo{IsPhysical: TriFalse},
-		ID:       DeviceIDInfo{IDFATracking: TriTrue},
+func TestEmptyIgnoresLive(t *testing.T) {
+	d := &Device{Web: DeviceWebInfo{UserAgent: "ua"}}
+	if !d.Empty() {
+		t.Fatal("UA-only is not a stable identity")
 	}
-	raw, err := json.Marshal(info)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out DeviceInfo
-	if err := json.Unmarshal(raw, &out); err != nil {
-		t.Fatal(err)
-	}
-	if !out.Hardware.IsPhysical.IsFalse() || !out.ID.IDFATracking.IsTrue() || out.Hardware.IsLowRam.IsSet() {
-		t.Fatalf("tristate: %+v", out)
-	}
-	if TriFromBool(true) != TriTrue || TriFromBool(false) != TriFalse {
-		t.Fatal("TriFromBool")
-	}
-}
-
-func TestHostLiveNested(t *testing.T) {
-	raw := []byte(`{
-		"platform":"macos",
-		"host":{"ramMb":16384,"diskTotalBytes":500000000000},
-		"hostLive":{"ramAvailMb":4096,"diskFreeBytes":100},
-		"network":{"carrier":"CMCC"},
-		"networkLive":{"networkType":"wifi","lng":116.4,"lat":39.9,"area":"beijing","wifiMac":"AA:BB"}
-	}`)
-	var info DeviceInfo
-	if err := json.Unmarshal(raw, &info); err != nil {
-		t.Fatal(err)
-	}
-	if info.Host.RamMB != 16384 || info.Host.DiskTotalB != 500000000000 {
-		t.Fatalf("static: %+v", info.Host)
-	}
-	if info.HostLive.RamAvailMB != 4096 || info.HostLive.DiskFreeB != 100 {
-		t.Fatalf("live: %+v", info.HostLive)
-	}
-	if info.Network.Carrier != "CMCC" {
-		t.Fatalf("network: %+v", info.Network)
-	}
-	if info.NetworkLive.NetworkType != "wifi" || info.NetworkLive.Lng != 116.4 || info.NetworkLive.WifiMAC != "AA:BB" {
-		t.Fatalf("networkLive: %+v", info.NetworkLive)
+	if !d.HasLive() {
+		t.Fatal("UA is live")
 	}
 }
