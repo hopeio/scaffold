@@ -24,19 +24,21 @@ func TestUpsertSplitTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	info := &Device{
-		Platform:   PlatformIOS,
-		ClientKind: ClientKindMobile,
-		App:        DeviceAppInfo{Code: "hoper", Version: "2.0.0"},
-		Hardware:   DeviceHardwareInfo{ModelName: "iPhone 16"},
-		ID:         DeviceIDInfo{DID: "biz-did"},
-		OS:         DeviceOSInfo{Name: "iOS", Version: "18.0"},
-		Host:       DeviceHostInfo{RamMB: 8192},
-		HostLive:   DeviceHostLiveInfo{RamAvailMB: 1024}, // 不应入库
-		Network:    DeviceNetworkInfo{Carrier: "CMCC"},
-		NetworkLive: DeviceNetworkLiveInfo{
-			NetworkType: "wifi",
-			Lng:         116.4,
+		DeviceLite: DeviceLite{
+			Platform:   PlatformIOS,
+			ClientKind: ClientKindMobile,
+			DeviceLiveInfo: DeviceLiveInfo{
+				RamAvailMB:  1024, // 不应入库
+				NetworkType: NetworkTypeWifi,
+				Lng:         116.4,
+			},
 		},
+		App:      DeviceAppInfo{Code: "hoper", Version: "2.0.0"},
+		Hardware: DeviceHardwareInfo{ModelName: "iPhone 16"},
+		ID:       DeviceIDInfo{DID: "biz-did"},
+		OS:       DeviceOSInfo{Name: "iOS", Version: "18.0"},
+		Host:     DeviceHostInfo{RamMB: 8192},
+		Network:  DeviceNetworkInfo{Carrier: "CMCC"},
 	}
 	// 主键与各域主键都由调用方预计算（生产实现是 protobuf 确定性 MD5）；
 	// 本测试只关心存储行为，用固定串即可。

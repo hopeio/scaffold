@@ -14,8 +14,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// 分表行：各域内容寻址，主键为内容哈希（32 hex）。
-// HostLive / NetworkLive 不入库。
+// Sharded rows: each domain is content-addressed; the primary key is the
+// content hash (32 hex). The volatile Live snapshot is not persisted, except
+// the display metrics, which go to DeviceScreenRow keyed by the device MD5
+// (not content-addressed, so they cannot perturb any digest).
 //
 // 主键算法由调用方提供（见 Upsert 的 id / DomainIDs）：调用方对 protobuf
 // 稳定域 / 各域二进制做确定性 MD5，保证与客户端逐字节一致。本包不引入
@@ -70,8 +72,22 @@ type DeviceWebRow struct {
 
 func (DeviceWebRow) TableName() string { return "device_web" }
 
-// DeviceRow 设备主表：引用各域主键，不含 HostLive / NetworkLive。
-// ID 即客户端 Device-Info-Md5（稳定域 protobuf MD5）。
+// DeviceScreenRow stores the volatile display metrics. Unlike the sharded
+// domain rows it is NOT content-addressed: it is keyed by the device's stable
+// MD5 and simply overwritten on each report, because these values change with
+// window size / zoom / monitor and must never feed a digest.
+type DeviceScreenRow struct {
+	ID           string  `json:"id" gorm:"primaryKey;size:32"`
+	ScreenWidth  int     `json:"screenWidth"`
+	ScreenHeight int     `json:"screenHeight"`
+	PixelRatio   float64 `json:"pixelRatio"`
+}
+
+func (DeviceScreenRow) TableName() string { return "device_screen" }
+
+// DeviceRow is the device master row: it references each domain's primary
+// key but does not contain the volatile Live snapshot.
+// ID is the client's Device-Info-Md5 (the stable-domain protobuf MD5).
 type DeviceRow struct {
 	ID         string            `json:"id" gorm:"primaryKey;size:32"`
 	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
@@ -133,7 +149,8 @@ func upsertDomain[T any](db *gorm.DB, id string, payload T) error {
 	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(row).Error
 }
 
-// Upsert 分表写入稳定域；跳过 HostLive / NetworkLive。返回主表 MD5。
+// Upsert writes the stable domains to sharded rows, skipping the volatile
+// Live snapshot. It returns the master-row MD5.
 // id 与 ids 均由调用方预计算（对 protobuf 稳定域 / 各域二进制做确定性 MD5，
 // 与客户端算法一致），必填；id 为空视为非法入参。
 func Upsert(db *gorm.DB, info *Device, id string, ids DomainIDs) (string, error) {
@@ -178,7 +195,27 @@ func Upsert(db *gorm.DB, info *Device, id string, ids DomainIDs) (string, error)
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"last_seen_at"}),
 	}).Create(&row).Error
-	return id, err
+	if err != nil {
+		return "", err
+	}
+
+	// 屏幕尺寸是易变量（缩放/换屏即变）：单独建非内容寻址的行，按设备 md5
+	// 覆盖更新，绝不参与任何 MD5，避免主键漂移。全为零视为未上报，不写行。
+	if s := info.DeviceLiveInfo; s.ScreenWidth > 0 || s.ScreenHeight > 0 || s.PixelRatio > 0 {
+		screen := DeviceScreenRow{
+			ID:           id,
+			ScreenWidth:  s.ScreenWidth,
+			ScreenHeight: s.ScreenHeight,
+			PixelRatio:   s.PixelRatio,
+		}
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"screen_width", "screen_height", "pixel_ratio"}),
+		}).Create(&screen).Error; err != nil {
+			return "", err
+		}
+	}
+	return id, nil
 }
 
 // AutoMigrateDeviceTables 迁移设备分表（不含 live）。
@@ -191,6 +228,7 @@ func AutoMigrateDeviceTables(db *gorm.DB) error {
 		&DeviceHostRow{},
 		&DeviceNetworkRow{},
 		&DeviceWebRow{},
+		&DeviceScreenRow{},
 		&DeviceRow{},
 	)
 }

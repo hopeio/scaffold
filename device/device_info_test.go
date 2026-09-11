@@ -20,9 +20,7 @@ func TestLiteFromHeader(t *testing.T) {
 	h.Set("User-Agent", "app/1.0")
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
 	h.Set("Device-Info-Md5", "abc")
-	h.Set(HeaderRamAvail, "1024")
-	h.Set(HeaderDiskFree, "500000")
-	h.Set(HeaderNetworkType, "wifi")
+	h.Set(HeaderDeviceDynamicInfo, `{"networkType":"wifi"}`)
 
 	lite := LiteFromHeader(h)
 	if lite.Empty() {
@@ -43,13 +41,8 @@ func TestLiteFromHeader(t *testing.T) {
 	if lite.Md5 != "abc" {
 		t.Fatalf("md5: %q", lite.Md5)
 	}
-
-	host, netType := HostLiveFromHeader(h)
-	if !LivePresent(host, netType) {
-		t.Fatal("expected host live")
-	}
-	if host.RamAvailMB != 1024 || host.DiskFreeB != 500000 || netType != "wifi" {
-		t.Fatalf("host: %+v %q", host, netType)
+	if lite.NetworkType != NetworkTypeWifi {
+		t.Fatalf("netType: %q", lite.NetworkType)
 	}
 }
 
@@ -57,43 +50,43 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 	if !LiteFromHeader(http.Header{}).Empty() {
 		t.Fatal("empty headers")
 	}
-	host, netType := HostLiveFromHeader(http.Header{})
-	if LivePresent(host, netType) {
-		t.Fatal("empty host live")
+	if LiteFromHeader(http.Header{}).NetworkType != NetworkTypeUnspecified {
+		t.Fatal("empty netType")
 	}
 }
 
-func TestHostLiveFromHeaderReplace(t *testing.T) {
+func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	info := &Device{
-		Platform:    PlatformIOS,
-		NetworkLive: DeviceNetworkLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: "old"},
-		HostLive:    DeviceHostLiveInfo{RamAvailMB: 8, DiskFreeB: 99},
+		DeviceLite: DeviceLite{
+			Platform: PlatformIOS,
+			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
+		},
 	}
 	h := make(http.Header)
 	h.Set("Location", ";;new")
-	h.Set(HeaderRamAvail, "256")
+	h.Set(HeaderDeviceDynamicInfo, `{"networkType":"wifi","ramAvailMB":256,"diskFreeB":99}`)
 	lite := LiteFromHeader(h)
-	host, netType := HostLiveFromHeader(h)
-	info.HostLive = host
-	info.NetworkLive.Lng, info.NetworkLive.Lat, info.NetworkLive.Area = lite.Lng, lite.Lat, lite.Area
-	info.NetworkLive.NetworkType = netType
+	info.DeviceLiveInfo.Lng, info.DeviceLiveInfo.Lat, info.DeviceLiveInfo.Area = lite.Lng, lite.Lat, lite.Area
+	info.DeviceLiveInfo.NetworkType = lite.NetworkType
+	info.DeviceLiveInfo.RamAvailMB = lite.RamAvailMB
+	info.DeviceLiveInfo.DiskFreeB = lite.DiskFreeB
 	if lite.UserAgent != "" {
 		info.Web.UserAgent = lite.UserAgent
 	}
 	if info.Platform != PlatformIOS {
 		t.Fatal("stable fields must stay")
 	}
-	if info.NetworkLive.Area != "new" {
-		t.Fatalf("area overwrite: %q", info.NetworkLive.Area)
+	if info.DeviceLiveInfo.Area != "new" {
+		t.Fatalf("area overwrite: %q", info.DeviceLiveInfo.Area)
 	}
-	if info.NetworkLive.Lng != 0 || info.NetworkLive.Lat != 0 {
-		t.Fatalf("stale loc kept: %v %v", info.NetworkLive.Lng, info.NetworkLive.Lat)
+	if info.DeviceLiveInfo.Lng != 0 || info.DeviceLiveInfo.Lat != 0 {
+		t.Fatalf("stale loc kept: %v %v", info.DeviceLiveInfo.Lng, info.DeviceLiveInfo.Lat)
 	}
-	if info.HostLive.RamAvailMB != 256 || info.HostLive.DiskFreeB != 0 {
-		t.Fatalf("hostLive: %+v", info.HostLive)
+	if info.DeviceLiveInfo.NetworkType != NetworkTypeWifi {
+		t.Fatalf("net type should update: %q", info.DeviceLiveInfo.NetworkType)
 	}
-	if info.NetworkLive.NetworkType != "" {
-		t.Fatalf("stale net type: %q", info.NetworkLive.NetworkType)
+	if info.DeviceLiveInfo.RamAvailMB != 256 || info.DeviceLiveInfo.DiskFreeB != 99 {
+		t.Fatalf("live: %+v", info.DeviceLiveInfo)
 	}
 }
 

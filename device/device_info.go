@@ -270,37 +270,131 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 // Platform-Info：platform;clientKind;version（系统版本）
 // App-Info：appCode;appVersion
 // Location：lng;lat;area
+// HeaderDeviceDynamicInfo aggregates the per-request volatile snapshot
+// (network type / available RAM / free disk) that previously lived in the
+// separate Network-Type / Ram-Avail / Disk-Free headers. JSON, e.g.
+// {"networkType":"wifi","ramAvailMB":1024,"diskFreeB":500000}。
+const HeaderDeviceDynamicInfo = "Device-Dynamic-Info"
+
+// NetworkType 网络类型。数值对齐 common.NetworkType。
+type NetworkType int8
+
 const (
-	HeaderRamAvail    = "Ram-Avail"    // HostLive.RamAvailMB
-	HeaderDiskFree    = "Disk-Free"    // HostLive.DiskFreeB
-	HeaderNetworkType = "Network-Type" // NetworkLive.NetworkType
+	NetworkTypeUnspecified NetworkType = 0
+	NetworkTypeWifi        NetworkType = 1
+	NetworkTypeCellular    NetworkType = 2
+	NetworkTypeEthernet    NetworkType = 3
+	NetworkTypeVpn         NetworkType = 4
+	NetworkTypeUnknown     NetworkType = 5
 )
 
-// Device 客户端环境信息（按域拆分嵌套）。
-// 稳定域由客户端接口上报；请求头只补 HostLive / NetworkLive / User-Agent。
+func (t NetworkType) String() string {
+	switch t {
+	case NetworkTypeWifi:
+		return "wifi"
+	case NetworkTypeCellular:
+		return "cellular"
+	case NetworkTypeEthernet:
+		return "ethernet"
+	case NetworkTypeVpn:
+		return "vpn"
+	case NetworkTypeUnknown:
+		return "unknown"
+	default:
+		return ""
+	}
+}
+
+// ParseNetworkType 解析 Device-Dynamic-Info / JSON 线格式（短名或数字）。
+func ParseNetworkType(s string) NetworkType {
+	s = strings.TrimSpace(strings.ToLower(s))
+	switch s {
+	case "", "0", "unspecified", "networktypeunspecified":
+		return NetworkTypeUnspecified
+	case "1", "wifi", "networktypewifi":
+		return NetworkTypeWifi
+	case "2", "cellular", "networktypecellular":
+		return NetworkTypeCellular
+	case "3", "ethernet", "networktypeethernet":
+		return NetworkTypeEthernet
+	case "4", "vpn", "networktypevpn":
+		return NetworkTypeVpn
+	case "5", "unknown", "networktypeunknown":
+		return NetworkTypeUnknown
+	default:
+		if n, err := strconv.Atoi(s); err == nil {
+			return NetworkType(n)
+		}
+		return NetworkTypeUnknown
+	}
+}
+
+func (t NetworkType) Value() (driver.Value, error) { return int64(t), nil }
+
+func (t *NetworkType) Scan(src any) error {
+	switch v := src.(type) {
+	case int64:
+		*t = NetworkType(v)
+	case int32:
+		*t = NetworkType(v)
+	case int:
+		*t = NetworkType(v)
+	case []byte:
+		*t = ParseNetworkType(string(v))
+	case string:
+		*t = ParseNetworkType(v)
+	case nil:
+		*t = NetworkTypeUnspecified
+	default:
+		return fmt.Errorf("device: cannot scan %T into NetworkType", src)
+	}
+	return nil
+}
+
+func (t NetworkType) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
+
+func (t *NetworkType) UnmarshalText(b []byte) error {
+	*t = ParseNetworkType(string(b))
+	return nil
+}
+
+func (t NetworkType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int(t))
+}
+
+func (t *NetworkType) UnmarshalJSON(b []byte) error {
+	b = bytesTrimSpace(b)
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*t = ParseNetworkType(s)
+		return nil
+	}
+	var n int
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*t = NetworkType(n)
+	return nil
+}
+
+// Device holds client environment info, split into nested domains.
+// The stable domain is reported via the upload interface; request headers only
+// supply the live snapshot (Area/Location/UA/Device-Dynamic-Info, etc.).
+// DeviceLite is embedded here: identity (Md5/Platform/ClientKind/...) plus the
+// live snapshot (IP/Lng/Lat/Area/UserAgent/NetworkType/RamAvailMB/DiskFreeB).
 type Device struct {
-	// StableMD5 is the content-addressed primary key of this device
-	// (DeviceRow.ID): the MD5 of the stable domain, reported via the
-	// Device-Info-Md5 header. It is the same value that DeviceRow persists.
-	//
-	// Excluded from JSON and gorm on purpose: a content-addressed key must
-	// not be part of the content it hashes (otherwise the digest would
-	// depend on itself). Callers that marshal a Device to compute its
-	// MD5 (protobuf, deterministic) therefore never see this field.
-	StableMD5 string `json:"-" gorm:"-"`
+	DeviceLite // embedded lightweight snapshot: identity (Md5) + live info
 
-	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
-
-	App         DeviceAppInfo         `json:"app" gorm:"embedded;embeddedPrefix:app_"`
-	Hardware    DeviceHardwareInfo    `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
-	ID          DeviceIDInfo          `json:"id" gorm:"embedded;embeddedPrefix:id_"`
-	OS          DeviceOSInfo          `json:"os" gorm:"embedded;embeddedPrefix:os_"`
-	Host        DeviceHostInfo        `json:"host" gorm:"embedded;embeddedPrefix:host_"`
-	HostLive    DeviceHostLiveInfo    `json:"hostLive" gorm:"-"` // 实时变动，先不入库
-	Network     DeviceNetworkInfo     `json:"network" gorm:"embedded;embeddedPrefix:net_"`
-	NetworkLive DeviceNetworkLiveInfo `json:"networkLive" gorm:"-"` // 实时变动，先不入库
-	Web         DeviceWebInfo         `json:"web" gorm:"embedded;embeddedPrefix:web_"`
+	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
+	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
+	ID       DeviceIDInfo       `json:"id" gorm:"embedded;embeddedPrefix:id_"`
+	OS       DeviceOSInfo       `json:"os" gorm:"embedded;embeddedPrefix:os_"`
+	Host     DeviceHostInfo     `json:"host" gorm:"embedded;embeddedPrefix:host_"`
+	Network  DeviceNetworkInfo  `json:"network" gorm:"embedded;embeddedPrefix:net_"`
+	Web      DeviceWebInfo      `json:"web" gorm:"embedded;embeddedPrefix:web_"`
 
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
 }
@@ -361,7 +455,7 @@ type DeviceIDInfo struct {
 	UDID         string   `json:"udid" gorm:"size:128"`
 	OpenUDID     string   `json:"openUdid" gorm:"size:128"`
 	GUID         string   `json:"guid" gorm:"size:128"`
-	MAC          string   `json:"mac" gorm:"size:64"` // 设备侧相对稳定的网卡/标识 MAC；会话随机 MAC 见 networkLive
+	MAC          string   `json:"mac" gorm:"size:64"` // relatively stable NIC/identifier MAC; volatile session MACs are dropped (modern OSes hide the real MAC from apps)
 	IDFATracking TriState `json:"idfaTracking,omitempty" gorm:"type:smallint"`
 }
 
@@ -378,8 +472,9 @@ type DeviceOSInfo struct {
 	Arch          string `json:"arch" gorm:"size:128"`
 }
 
-// DeviceHostInfo 相对稳定的主机画像（区域 / 语言 / 容量上限）。
-// 可用内存、剩余磁盘等采集时刻可变字段见 Device.HostLive，不宜当设备指纹。
+// DeviceHostInfo is the relatively stable host profile (locale / language / capacity).
+// Volatile fields such as available RAM / free disk live in Device.DeviceLiveInfo and must
+// not be used as a device fingerprint.
 type DeviceHostInfo struct {
 	Locale       string `json:"locale" gorm:"size:64"`
 	Language     string `json:"language" gorm:"size:32"`
@@ -392,30 +487,34 @@ type DeviceHostInfo struct {
 	DiskTotalB   int64  `json:"diskTotalBytes,omitempty"` // 磁盘总量
 }
 
-// DeviceHostLiveInfo 采集时刻可变快照（随进程/系统负载变化）。
-type DeviceHostLiveInfo struct {
-	RamAvailMB int64 `json:"ramAvailMb,omitempty"`
-	DiskFreeB  int64 `json:"diskFreeBytes,omitempty"`
+// DeviceLiveInfo is a volatile per-request snapshot (RAM/disk/network/geo).
+// It changes with process/OS load, sessions and connections, so it must not be
+// used as a device fingerprint and is not persisted.
+// Volatile MACs (wifiMac/bluetoothMac) are dropped: modern OSes hide the real
+// MAC from apps and hand out randomized values with no stable identity.
+type DeviceLiveInfo struct {
+	IP           net.IP      `json:"ip,omitempty" gorm:"size:64"`
+	NetworkType  NetworkType `json:"networkType,omitempty" gorm:"type:smallint"` // wifi|cellular|ethernet|vpn|unknown
+	Lng          float64     `json:"lng,omitempty" gorm:"type:numeric(10,6)"`
+	Lat          float64     `json:"lat,omitempty" gorm:"type:numeric(10,6)"`
+	Area         string      `json:"area,omitempty" gorm:"size:255"`
+	UserAgent    string      `json:"userAgent,omitempty" gorm:"size:512"`
+	RamAvailMB   int64       `json:"ramAvailMB,omitempty" gorm:"type:bigint"`
+	DiskFreeB    int64       `json:"diskFreeB,omitempty" gorm:"type:bigint"`
+	ScreenWidth  int         `json:"screenWidth,omitempty"`
+	ScreenHeight int         `json:"screenHeight,omitempty"`
+	PixelRatio   float64     `json:"pixelRatio,omitempty"`
 }
 
-// DeviceNetworkInfo 相对稳定的运营商 / SIM 画像。
-// IP、链路类型、经纬度等会话侧字段见 Device.NetworkLive。
+// DeviceNetworkInfo is the relatively stable carrier / SIM profile.
+// Volatile session-side fields (IP/network-type/geo) live in Device.DeviceLiveInfo.
 type DeviceNetworkInfo struct {
 	Carrier string `json:"carrier" gorm:"size:64"`
 	ICCID   string `json:"iccid" gorm:"size:32"`
 	IMSI    string `json:"imsi" gorm:"size:32"`
 }
 
-// DeviceNetworkLiveInfo 采集时刻可变的网络 / 地理快照。
-type DeviceNetworkLiveInfo struct {
-	IP           net.IP  `json:"ip" gorm:"size:64"`
-	NetworkType  string  `json:"networkType" gorm:"size:32"` // wifi|cellular|ethernet|vpn|unknown
-	WifiMAC      string  `json:"wifiMac" gorm:"size:64"`     // 常随随机 MAC / 当前连接变化
-	BluetoothMAC string  `json:"bluetoothMac" gorm:"size:64"`
-	Lng          float64 `json:"lng" gorm:"type:numeric(10,6)"`
-	Lat          float64 `json:"lat" gorm:"type:numeric(10,6)"`
-	Area         string  `json:"area" gorm:"size:255"`
-}
+
 
 // DeviceWebInfo 浏览器 / WebView。
 type DeviceWebInfo struct {
@@ -426,17 +525,16 @@ type DeviceWebInfo struct {
 	EngineVersion  string   `json:"engineVersion" gorm:"size:64"`
 	Vendor         string   `json:"vendor" gorm:"size:128"`
 	MaxTouchPts    int      `json:"maxTouchPoints,omitempty"`
-	ScreenWidth    int      `json:"screenWidth,omitempty"`
-	ScreenHeight   int      `json:"screenHeight,omitempty"`
-	PixelRatio     float64  `json:"pixelRatio,omitempty"`
 	ColorDepth     int      `json:"colorDepth,omitempty"`
 	DeviceMemoryG  float64  `json:"deviceMemoryGb,omitempty"`
 	CookieEnabled  TriState `json:"cookieEnabled,omitempty" gorm:"type:smallint"`
 	DoNotTrack     TriState `json:"doNotTrack,omitempty" gorm:"type:smallint"`
 }
 
-// DeviceLite 请求侧轻量设备快照（与 user.AccessDevice 同构）。
-// 来自 Platform-Info / App-Info / Location / Device-Info-Md5 / UA / XFF，不还原完整 Device。
+// DeviceLite is a lightweight per-request device snapshot (isomorphic to
+// user.AccessDevice). It is built from Platform-Info / App-Info / Location /
+// Device-Info-Md5 / UA / XFF / Device-Dynamic-Info headers without reconstructing
+// a full Device. The volatile fields are embedded via DeviceLiveInfo.
 type DeviceLite struct {
 	Md5        string         `json:"md5" gorm:"size:255"`
 	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
@@ -444,11 +542,7 @@ type DeviceLite struct {
 	Version    string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
 	AppCode    string         `json:"appCode" gorm:"size:255"`
 	AppVersion string         `json:"appVersion" gorm:"size:255"`
-	IP         net.IP         `json:"ip" gorm:"size:64"`
-	Lng        float64        `json:"lng" gorm:"type:numeric(10,6)"`
-	Lat        float64        `json:"lat" gorm:"type:numeric(10,6)"`
-	Area       string         `json:"area" gorm:"size:255"`
-	UserAgent  string         `json:"userAgent" gorm:"size:512"`
+	DeviceLiveInfo // volatile per-request snapshot
 }
 
 // Empty 是否全空。
@@ -462,13 +556,13 @@ func (l DeviceLite) Empty() bool {
 		l.UserAgent == ""
 }
 
-// Lite 投影为精简行存结构。
+// Lite projects the device into the lightweight DeviceLite snapshot.
 func (d *Device) Lite() DeviceLite {
 	if d == nil {
 		return DeviceLite{}
 	}
 	d.Normalize()
-	md5 := d.StableMD5
+	md5 := d.Md5
 	if md5 == "" {
 		md5 = d.PrimaryDeviceNo()
 	}
@@ -479,11 +573,16 @@ func (d *Device) Lite() DeviceLite {
 		Version:    d.OS.Version,
 		AppCode:    d.App.Code,
 		AppVersion: d.App.Version,
-		IP:         d.NetworkLive.IP,
-		Lng:        d.NetworkLive.Lng,
-		Lat:        d.NetworkLive.Lat,
-		Area:       d.NetworkLive.Area,
-		UserAgent:  d.Web.UserAgent,
+		DeviceLiveInfo: DeviceLiveInfo{
+			IP:          d.IP,
+			NetworkType: d.NetworkType,
+			Lng:         d.Lng,
+			Lat:         d.Lat,
+			Area:        d.Area,
+			UserAgent:   d.UserAgent,
+			RamAvailMB:  d.RamAvailMB,
+			DiskFreeB:   d.DiskFreeB,
+		},
 	}
 }
 
@@ -634,29 +733,20 @@ func LiteFromHeader(header http.Header) DeviceLite {
 		}
 	}
 	lite.UserAgent = header.Get(httpx.HeaderUserAgent)
+	if v := strings.TrimSpace(header.Get(HeaderDeviceDynamicInfo)); v != "" {
+		var dyn struct {
+			NetworkType string `json:"networkType"`
+			RamAvailMB  int64  `json:"ramAvailMB"`
+			DiskFreeB   int64  `json:"diskFreeB"`
+		}
+		if err := json.Unmarshal([]byte(v), &dyn); err == nil {
+			lite.NetworkType = ParseNetworkType(dyn.NetworkType)
+			lite.RamAvailMB = dyn.RamAvailMB
+			lite.DiskFreeB = dyn.DiskFreeB
+		}
+	}
 	lite.Md5 = strings.TrimSpace(header.Get(httpx.HeaderDeviceInfoMd5))
 	return lite
-}
-
-// HostLiveFromHeader 本请求可变资源快照（内存/磁盘/网络类型），叠到完整 Device 用。
-func HostLiveFromHeader(header http.Header) (host DeviceHostLiveInfo, networkType string) {
-	if header == nil {
-		return host, ""
-	}
-	if v := header.Get(HeaderNetworkType); v != "" {
-		networkType = strings.TrimSpace(v)
-	}
-	if v := header.Get(HeaderRamAvail); v != "" {
-		if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
-			host.RamAvailMB = n
-		}
-	}
-	if v := header.Get(HeaderDiskFree); v != "" {
-		if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
-			host.DiskFreeB = n
-		}
-	}
-	return host, networkType
 }
 
 func parseLocationHeader(raw string) (lng, lat float64, area string) {
@@ -688,21 +778,20 @@ func splitSemiHeader(raw string) []string {
 	return parts
 }
 
-// LivePresent 是否带有本请求的可变资源快照（内存/磁盘/网络类型）。
-func LivePresent(host DeviceHostLiveInfo, networkType string) bool {
-	return host.RamAvailMB != 0 || host.DiskFreeB != 0 || networkType != ""
+// LivePresent reports whether a volatile snapshot (RAM/disk/network-type/IP/geo/UA) is present.
+func LivePresent(live DeviceLiveInfo) bool {
+	return live.RamAvailMB != 0 || live.DiskFreeB != 0 ||
+		live.NetworkType != NetworkTypeUnspecified ||
+		live.IP != nil || live.Area != "" || live.Lng != 0 || live.Lat != 0 ||
+		live.UserAgent != ""
 }
 
-// HasLive 是否带有本请求的可变快照。
+// HasLive reports whether this device carries a volatile snapshot.
 func (d *Device) HasLive() bool {
 	if d == nil {
 		return false
 	}
-	return LivePresent(d.HostLive, d.NetworkLive.NetworkType) ||
-		d.NetworkLive.IP != nil ||
-		d.NetworkLive.Area != "" ||
-		d.NetworkLive.Lng != 0 || d.NetworkLive.Lat != 0 ||
-		d.Web.UserAgent != ""
+	return LivePresent(d.DeviceLiveInfo) || d.Web.UserAgent != ""
 }
 
 // Empty 是否缺少稳定设备画像（live 头不算身份）。
