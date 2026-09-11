@@ -90,9 +90,9 @@ func (DeviceScreenRow) TableName() string { return "device_screen" }
 // ID is the client's Device-Info-Md5 (the stable-domain protobuf MD5).
 type DeviceRow struct {
 	ID         string            `json:"id" gorm:"primaryKey;size:32"`
-	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
-	AppID      string         `json:"appId" gorm:"size:32;index"`
+	Platform   DevicePlatform    `json:"platform" gorm:"type:smallint"`
+	ClientKind ClientKind        `json:"clientKind" gorm:"type:smallint"`
+	AppID      string            `json:"appId" gorm:"size:32;index"`
 	HardwareID string            `json:"hardwareId" gorm:"size:32;index"`
 	IdentID    string            `json:"identId" gorm:"size:32;index"`
 	OsID       string            `json:"osId" gorm:"size:32;index"`

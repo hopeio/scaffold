@@ -514,8 +514,6 @@ type DeviceNetworkInfo struct {
 	IMSI    string `json:"imsi" gorm:"size:32"`
 }
 
-
-
 // DeviceWebInfo 浏览器 / WebView。
 type DeviceWebInfo struct {
 	UserAgent      string   `json:"userAgent" gorm:"size:512"`
@@ -536,13 +534,13 @@ type DeviceWebInfo struct {
 // Device-Info-Md5 / UA / XFF / Device-Dynamic-Info headers without reconstructing
 // a full Device. The volatile fields are embedded via DeviceLiveInfo.
 type DeviceLite struct {
-	Md5        string         `json:"md5" gorm:"size:255"`
-	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
-	Version    string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
-	AppCode    string         `json:"appCode" gorm:"size:255"`
-	AppVersion string         `json:"appVersion" gorm:"size:255"`
-	DeviceLiveInfo // volatile per-request snapshot
+	Md5            string         `json:"md5" gorm:"size:255"`
+	Platform       DevicePlatform `json:"platform" gorm:"type:smallint"`
+	ClientKind     ClientKind     `json:"clientKind" gorm:"type:smallint"`
+	Version        string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
+	AppCode        string         `json:"appCode" gorm:"size:255"`
+	AppVersion     string         `json:"appVersion" gorm:"size:255"`
+	DeviceLiveInfo                // volatile per-request snapshot
 }
 
 // Empty 是否全空。
@@ -733,16 +731,19 @@ func LiteFromHeader(header http.Header) DeviceLite {
 		}
 	}
 	lite.UserAgent = header.Get(httpx.HeaderUserAgent)
-	if v := strings.TrimSpace(header.Get(HeaderDeviceDynamicInfo)); v != "" {
-		var dyn struct {
-			NetworkType string `json:"networkType"`
-			RamAvailMB  int64  `json:"ramAvailMB"`
-			DiskFreeB   int64  `json:"diskFreeB"`
+	// 与 Platform-Info / App-Info 同风格：分号分隔、只带值，
+	// 顺序为 networkType;ramAvailMB;diskFreeB（缺位用空段占位）。
+	if parts := splitSemiHeader(header.Get(HeaderDeviceDynamicInfo)); len(parts) > 0 {
+		lite.NetworkType = ParseNetworkType(parts[0])
+		if len(parts) > 1 {
+			if n, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
+				lite.RamAvailMB = n
+			}
 		}
-		if err := json.Unmarshal([]byte(v), &dyn); err == nil {
-			lite.NetworkType = ParseNetworkType(dyn.NetworkType)
-			lite.RamAvailMB = dyn.RamAvailMB
-			lite.DiskFreeB = dyn.DiskFreeB
+		if len(parts) > 2 {
+			if n, err := strconv.ParseInt(parts[2], 10, 64); err == nil {
+				lite.DiskFreeB = n
+			}
 		}
 	}
 	lite.Md5 = strings.TrimSpace(header.Get(httpx.HeaderDeviceInfoMd5))

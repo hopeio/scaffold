@@ -20,7 +20,7 @@ func TestLiteFromHeader(t *testing.T) {
 	h.Set("User-Agent", "app/1.0")
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
 	h.Set("Device-Info-Md5", "abc")
-	h.Set(HeaderDeviceDynamicInfo, `{"networkType":"wifi"}`)
+	h.Set(HeaderDeviceDynamicInfo, "wifi")
 
 	lite := LiteFromHeader(h)
 	if lite.Empty() {
@@ -58,13 +58,13 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	info := &Device{
 		DeviceLite: DeviceLite{
-			Platform: PlatformIOS,
+			Platform:       PlatformIOS,
 			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
 		},
 	}
 	h := make(http.Header)
 	h.Set("Location", ";;new")
-	h.Set(HeaderDeviceDynamicInfo, `{"networkType":"wifi","ramAvailMB":256,"diskFreeB":99}`)
+	h.Set(HeaderDeviceDynamicInfo, "wifi;256;99")
 	lite := LiteFromHeader(h)
 	info.DeviceLiveInfo.Lng, info.DeviceLiveInfo.Lat, info.DeviceLiveInfo.Area = lite.Lng, lite.Lat, lite.Area
 	info.DeviceLiveInfo.NetworkType = lite.NetworkType
