@@ -579,33 +579,27 @@ func (l DeviceLite) Empty() bool {
 }
 
 // Lite projects the device into the lightweight DeviceLite snapshot.
+// The embedded DeviceLite is already the identity + live snapshot, so only the
+// fields that have to be derived from the stable domains are filled in when empty.
 func (d *Device) Lite() DeviceLite {
 	if d == nil {
 		return DeviceLite{}
 	}
 	d.Normalize()
-	md5 := d.Md5
-	if md5 == "" {
-		md5 = d.PrimaryDeviceNo()
+	lite := d.DeviceLite
+	if lite.Md5 == "" {
+		lite.Md5 = d.PrimaryDeviceNo()
 	}
-	return DeviceLite{
-		Md5:        md5,
-		Platform:   d.Platform,
-		ClientKind: d.ClientKind,
-		Version:    d.OS.Version,
-		AppCode:    d.App.Code,
-		AppVersion: d.App.Version,
-		DeviceLiveInfo: DeviceLiveInfo{
-			IP:          d.IP,
-			NetworkType: d.NetworkType,
-			Lng:         d.Lng,
-			Lat:         d.Lat,
-			Area:        d.Area,
-			UserAgent:   d.UserAgent,
-			RamAvailMB:  d.RamAvailMB,
-			DiskFreeB:   d.DiskFreeB,
-		},
+	if lite.Version == "" {
+		lite.Version = d.OS.Version
 	}
+	if lite.AppCode == "" {
+		lite.AppCode = d.App.Code
+	}
+	if lite.AppVersion == "" {
+		lite.AppVersion = d.App.Version
+	}
+	return lite
 }
 
 // DisplayName 人可读设备名。
