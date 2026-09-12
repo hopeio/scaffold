@@ -58,7 +58,7 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	info := &UserDevice{
 		DeviceLite: DeviceLite{
-			Platform:       PlatformIOS,
+			Platform:       DevicePlatformIos,
 			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
 		},
 	}
@@ -73,7 +73,7 @@ func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	if lite.UserAgent != "" {
 		info.Web.UserAgent = lite.UserAgent
 	}
-	if info.Platform != PlatformIOS {
+	if info.Platform != DevicePlatformIos {
 		t.Fatal("stable fields must stay")
 	}
 	if info.DeviceLiveInfo.Area != "new" {

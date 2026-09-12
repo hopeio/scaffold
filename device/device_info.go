@@ -32,16 +32,6 @@ const (
 	DevicePlatformUnknown     DevicePlatform = 6
 )
 
-// 兼容旧常量名。
-const (
-	PlatformAndroid = DevicePlatformAndroid
-	PlatformIOS     = DevicePlatformIos
-	PlatformMacOS   = DevicePlatformMacos
-	PlatformWindows = DevicePlatformWindows
-	PlatformLinux   = DevicePlatformLinux
-	PlatformUnknown = DevicePlatformUnknown
-)
-
 func (p DevicePlatform) String() string {
 	switch p {
 	case DevicePlatformAndroid:
@@ -279,7 +269,6 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 //     are left empty). It aggregates the volatile snapshot that previously
 //     lived in the separate Network-Type / Ram-Avail / Disk-Free headers.
 const (
-	HeaderDeviceInfo        = "Device-Info"     // full Device JSON, superseded by UploadDeviceInfo
 	HeaderDeviceInfoMd5     = "Device-Info-Md5" // content-addressed device key (Device.StableMD5)
 	HeaderPlatformInfo      = "Platform-Info"   // platform;clientKind;version (OS version)
 	HeaderAppInfo           = "App-Info"        // appCode;appVersion
@@ -578,24 +567,7 @@ func (d *UserDevice) Lite() DeviceLite {
 	if md5 == "" {
 		md5 = d.PrimaryDeviceNo()
 	}
-	return DeviceLite{
-		Md5:        md5,
-		Platform:   d.Platform,
-		ClientKind: d.ClientKind,
-		Version:    d.OS.Version,
-		AppCode:    d.App.Code,
-		AppVersion: d.App.Version,
-		DeviceLiveInfo: DeviceLiveInfo{
-			IP:          d.IP,
-			NetworkType: d.NetworkType,
-			Lng:         d.Lng,
-			Lat:         d.Lat,
-			Area:        d.Area,
-			UserAgent:   d.UserAgent,
-			RamAvailMB:  d.RamAvailMB,
-			DiskFreeB:   d.DiskFreeB,
-		},
-	}
+	return d.DeviceLite
 }
 
 // DisplayName 人可读设备名。

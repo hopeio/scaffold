@@ -25,7 +25,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	}
 	info := &UserDevice{
 		DeviceLite: DeviceLite{
-			Platform:   PlatformIOS,
+			Platform:   DevicePlatformIos,
 			ClientKind: ClientKindMobile,
 			DeviceLiveInfo: DeviceLiveInfo{
 				RamAvailMB:  1024, // 不应入库
@@ -110,7 +110,7 @@ func TestBindUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	const deviceMD5 = "fixture-bind-md5"
-	if _, err := Upsert(db, &UserDevice{DeviceLite: DeviceLite{Platform: PlatformIOS}}, deviceMD5, DomainIDs{}); err != nil {
+	if _, err := Upsert(db, &UserDevice{DeviceLite: DeviceLite{Platform: DevicePlatformIos}}, deviceMD5, DomainIDs{}); err != nil {
 		t.Fatal(err)
 	}
 	// Device upload is anonymous, so the owner can only be written by the
