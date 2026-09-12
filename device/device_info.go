@@ -29,6 +29,7 @@ const (
 	DevicePlatformMacos       DevicePlatform = 3
 	DevicePlatformWindows     DevicePlatform = 4
 	DevicePlatformLinux       DevicePlatform = 5
+	DevicePlatformUnknown     DevicePlatform = 6
 )
 
 // 兼容旧常量名。
@@ -38,20 +39,8 @@ const (
 	PlatformMacOS   = DevicePlatformMacos
 	PlatformWindows = DevicePlatformWindows
 	PlatformLinux   = DevicePlatformLinux
+	PlatformUnknown = DevicePlatformUnknown
 )
-
-// IsSet reports whether the value names a real platform. Anything else —
-// the zero value, values reserved by proto (6 = removed UNKNOWN) or values
-// added by a newer writer — must be treated as "not set".
-func (p DevicePlatform) IsSet() bool {
-	switch p {
-	case DevicePlatformAndroid, DevicePlatformIos, DevicePlatformMacos,
-		DevicePlatformWindows, DevicePlatformLinux:
-		return true
-	default:
-		return false
-	}
-}
 
 func (p DevicePlatform) String() string {
 	switch p {
@@ -65,6 +54,8 @@ func (p DevicePlatform) String() string {
 		return "windows"
 	case DevicePlatformLinux:
 		return "linux"
+	case DevicePlatformUnknown:
+		return "unknown"
 	default:
 		return ""
 	}
@@ -86,13 +77,13 @@ func ParseDevicePlatform(s string) DevicePlatform {
 		return DevicePlatformWindows
 	case "5", "linux", "deviceplatformlinux":
 		return DevicePlatformLinux
+	case "6", "unknown", "deviceplatformunknown":
+		return DevicePlatformUnknown
 	default:
-		// Unparsable or unknown input — including the legacy "unknown"/6 that
-		// no longer exists — means "not reported"; see DevicePlatform.IsSet.
 		if n, err := strconv.Atoi(s); err == nil {
 			return DevicePlatform(n)
 		}
-		return DevicePlatformUnspecified
+		return DevicePlatformUnknown
 	}
 }
 
@@ -158,17 +149,6 @@ const (
 	ClientKindWeb         ClientKind = 4
 	ClientKindWebview     ClientKind = 5
 )
-
-// IsSet reports whether the value names a real client kind; any other value
-// (zero value or a value added by a newer writer) counts as "not set".
-func (k ClientKind) IsSet() bool {
-	switch k {
-	case ClientKindMobile, ClientKindTablet, ClientKindDesktop, ClientKindWeb, ClientKindWebview:
-		return true
-	default:
-		return false
-	}
-}
 
 func (k ClientKind) String() string {
 	switch k {
@@ -577,7 +557,7 @@ type DeviceLite struct {
 // Empty 是否全空。
 func (l DeviceLite) Empty() bool {
 	return l.Md5 == "" &&
-		!l.Platform.IsSet() && !l.ClientKind.IsSet() &&
+		l.Platform == DevicePlatformUnspecified && l.ClientKind == ClientKindUnspecified &&
 		l.Version == "" &&
 		l.AppCode == "" && l.AppVersion == "" &&
 		l.IP == nil && l.Area == "" &&
@@ -649,10 +629,10 @@ func (d *Device) Normalize() {
 	if d == nil {
 		return
 	}
-	if !d.Platform.IsSet() {
+	if d.Platform == DevicePlatformUnspecified {
 		d.Platform = inferPlatform(d)
 	}
-	if !d.ClientKind.IsSet() {
+	if d.ClientKind == ClientKindUnspecified {
 		d.ClientKind = inferClientKind(d.Platform)
 	}
 	if d.App.Version == "" && d.App.Build != "" {
@@ -701,7 +681,7 @@ func inferPlatform(d *Device) DevicePlatform {
 	case d.ID.AndroidID != "" || d.ID.OAID != "" || d.ID.GAID != "" || d.ID.IMEI != "":
 		return DevicePlatformAndroid
 	default:
-		return DevicePlatformUnspecified
+		return DevicePlatformUnknown
 	}
 }
 
@@ -831,7 +811,7 @@ func (d *Device) Empty() bool {
 	if d == nil {
 		return true
 	}
-	platEmpty := !d.Platform.IsSet()
+	platEmpty := d.Platform == DevicePlatformUnspecified || d.Platform == DevicePlatformUnknown
 	return platEmpty &&
 		d.DisplayName() == "" && d.PrimaryDeviceNo() == "" &&
 		d.App.Code == "" && d.App.Version == "" && d.Web.Browser == "" &&
