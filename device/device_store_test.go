@@ -23,7 +23,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	if err := AutoMigrateDeviceTables(db); err != nil {
 		t.Fatal(err)
 	}
-	info := &UserDevice{
+	info := &Device{
 		DeviceLite: DeviceLite{
 			Platform:   DevicePlatformIos,
 			ClientKind: ClientKindMobile,
@@ -43,7 +43,6 @@ func TestUpsertSplitTables(t *testing.T) {
 	// 主键与各域主键都由调用方预计算（生产实现是 protobuf 确定性 MD5）；
 	// 本测试只关心存储行为，用固定串即可。
 	const deviceID = "fixture-stable-md5"
-	info.UserID = 42
 	ids := DomainIDs{
 		App:      "fixture-app-md5",
 		Hardware: "fixture-hw-md5",
@@ -60,8 +59,8 @@ func TestUpsertSplitTables(t *testing.T) {
 	if id1 == "" {
 		t.Fatal("empty id")
 	}
-	// A re-report refreshes the owning user (no history compat).
-	info.UserID = 7
+	// A re-report must not touch the owner: the upload endpoint is anonymous,
+	// user_id is written by BindUser only.
 	id2, err := Upsert(db, info, deviceID, ids)
 	if err != nil {
 		t.Fatal(err)
@@ -69,15 +68,15 @@ func TestUpsertSplitTables(t *testing.T) {
 	if id1 != id2 {
 		t.Fatalf("idempotent md5: %s vs %s", id1, id2)
 	}
-	var master UserDeviceRow
+	var master UserDevice
 	if err := db.Where("md5 = ?", deviceID).First(&master).Error; err != nil {
 		t.Fatal(err)
 	}
-	if master.ID == 0 || master.MD5 != deviceID || master.UserID != 7 {
+	if master.RowID == 0 || master.Md5 != deviceID || master.UserID != 0 {
 		t.Fatalf("master row: %+v", master)
 	}
 	var n int64
-	if err := db.Model(&UserDeviceRow{}).Count(&n).Error; err != nil {
+	if err := db.Model(&UserDevice{}).Count(&n).Error; err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
@@ -110,7 +109,7 @@ func TestBindUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	const deviceMD5 = "fixture-bind-md5"
-	if _, err := Upsert(db, &UserDevice{DeviceLite: DeviceLite{Platform: DevicePlatformIos}}, deviceMD5, DomainIDs{}); err != nil {
+	if _, err := Upsert(db, &Device{DeviceLite: DeviceLite{Platform: DevicePlatformIos}}, deviceMD5, DomainIDs{}); err != nil {
 		t.Fatal(err)
 	}
 	// Device upload is anonymous, so the owner can only be written by the
@@ -118,7 +117,7 @@ func TestBindUser(t *testing.T) {
 	if err := BindUser(db, deviceMD5, 99); err != nil {
 		t.Fatal(err)
 	}
-	var row UserDeviceRow
+	var row UserDevice
 	if err := db.Where("md5 = ?", deviceMD5).First(&row).Error; err != nil {
 		t.Fatal(err)
 	}

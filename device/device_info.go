@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	httpx "github.com/hopeio/gox/net/http"
 )
@@ -380,16 +381,11 @@ func (t *NetworkType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// UserDevice holds client environment info, split into nested domains.
-// The stable domain is reported via the upload interface; request headers only
-// supply the live snapshot (Area/Location/UA/Device-Dynamic-Info, etc.).
-// DeviceLite is embedded here: identity (Md5/Platform/ClientKind/...) plus the
-// live snapshot (IP/Lng/Lat/Area/UserAgent/NetworkType/RamAvailMB/DiskFreeB).
-// UserID is the owning user; 0 means the device is not bound to a user yet.
-type UserDevice struct {
-	UserID uint64 `json:"userId"`
-
-	DeviceLite // embedded lightweight snapshot: identity (Md5) + live info
+// Device 客户端上报的完整设备画像：稳定域（app/hardware/ident/os/host/network/web）
+// 加 DeviceLite（身份 + 实时快照）。它只活在内存与上报链路里，不落库：稳定域按内容
+// 寻址存进各自的 device_* 分表，主表 user_device 只留引用（见 UserDevice）。
+type Device struct {
+	DeviceLite // identity (Md5/Platform/ClientKind/...) + 实时快照
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
@@ -401,6 +397,29 @@ type UserDevice struct {
 
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
 }
+
+// UserDevice 是 user_device 主表的行：归属某个用户，只保存稳定身份
+//（md5/platform/clientKind）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
+// RowID 是自增代理主键（服务端内部用，故 json:"-"）；Md5 是客户端 Device-Info-Md5，
+// 业务唯一键。
+type UserDevice struct {
+	RowID      uint64            `json:"-" gorm:"primaryKey;column:id"`
+	UserID     uint64            `json:"userId" gorm:"index"`
+	Md5        string            `json:"md5" gorm:"uniqueIndex;size:32"`
+	Platform   DevicePlatform    `json:"platform" gorm:"type:smallint"`
+	ClientKind ClientKind        `json:"clientKind" gorm:"type:smallint"`
+	AppID      string            `json:"appId" gorm:"size:32;index"`
+	HardwareID string            `json:"hardwareId" gorm:"size:32;index"`
+	IdentID    string            `json:"identId" gorm:"size:32;index"`
+	OsID       string            `json:"osId" gorm:"size:32;index"`
+	HostID     string            `json:"hostId" gorm:"size:32;index"`
+	NetworkID  string            `json:"networkId" gorm:"size:32;index"`
+	WebID      string            `json:"webId" gorm:"size:32;index"`
+	Ext        map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
+	LastSeenAt time.Time         `json:"lastSeenAt" gorm:"index"`
+}
+
+func (UserDevice) TableName() string { return "user_device" }
 
 // DeviceAppInfo 应用 / 包信息。
 type DeviceAppInfo struct {
@@ -543,7 +562,7 @@ type DeviceLite struct {
 	Version        string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
 	AppCode        string         `json:"appCode" gorm:"size:255"`
 	AppVersion     string         `json:"appVersion" gorm:"size:255"`
-	DeviceLiveInfo                // volatile per-request snapshot
+	DeviceLiveInfo // volatile per-request snapshot
 }
 
 // Empty 是否全空。
@@ -558,7 +577,7 @@ func (l DeviceLite) Empty() bool {
 }
 
 // Lite projects the device into the lightweight DeviceLite snapshot.
-func (d *UserDevice) Lite() DeviceLite {
+func (d *Device) Lite() DeviceLite {
 	if d == nil {
 		return DeviceLite{}
 	}
@@ -571,7 +590,7 @@ func (d *UserDevice) Lite() DeviceLite {
 }
 
 // DisplayName 人可读设备名。
-func (d *UserDevice) DisplayName() string {
+func (d *Device) DisplayName() string {
 	if d == nil {
 		return ""
 	}
@@ -580,7 +599,7 @@ func (d *UserDevice) DisplayName() string {
 }
 
 // OSDisplay 人可读系统版本。
-func (d *UserDevice) OSDisplay() string {
+func (d *Device) OSDisplay() string {
 	if d == nil {
 		return ""
 	}
@@ -588,7 +607,7 @@ func (d *UserDevice) OSDisplay() string {
 }
 
 // PrimaryDeviceNo 优先业务 DID，再按常见标识回退。
-func (d *UserDevice) PrimaryDeviceNo() string {
+func (d *Device) PrimaryDeviceNo() string {
 	if d == nil {
 		return ""
 	}
@@ -600,7 +619,7 @@ func (d *UserDevice) PrimaryDeviceNo() string {
 }
 
 // Normalize 补全 platform / clientKind 等可推导字段。
-func (d *UserDevice) Normalize() {
+func (d *Device) Normalize() {
 	if d == nil {
 		return
 	}
@@ -638,7 +657,7 @@ func (d *UserDevice) Normalize() {
 	}
 }
 
-func inferPlatform(d *UserDevice) DevicePlatform {
+func inferPlatform(d *Device) DevicePlatform {
 	s := strings.ToLower(strings.TrimSpace(d.OS.Name + " " + d.Platform.String()))
 	switch {
 	case strings.Contains(s, "android"):
@@ -774,7 +793,7 @@ func LivePresent(live DeviceLiveInfo) bool {
 }
 
 // HasLive reports whether this device carries a volatile snapshot.
-func (d *UserDevice) HasLive() bool {
+func (d *Device) HasLive() bool {
 	if d == nil {
 		return false
 	}
@@ -782,7 +801,7 @@ func (d *UserDevice) HasLive() bool {
 }
 
 // Empty 是否缺少稳定设备画像（live 头不算身份）。
-func (d *UserDevice) Empty() bool {
+func (d *Device) Empty() bool {
 	if d == nil {
 		return true
 	}
@@ -793,7 +812,7 @@ func (d *UserDevice) Empty() bool {
 		d.OS.Name == "" && d.OS.Version == "" && len(d.Ext) == 0
 }
 
-func UserDeviceFromJSON(raw string) *UserDevice {
+func DeviceFromJSON(raw string) *Device {
 	s := strings.TrimSpace(raw)
 	if s == "" {
 		return nil
@@ -804,7 +823,7 @@ func UserDeviceFromJSON(raw string) *UserDevice {
 	if !strings.HasPrefix(s, "{") {
 		return nil
 	}
-	info := new(UserDevice)
+	info := new(Device)
 	if err := json.Unmarshal([]byte(s), info); err != nil {
 		return nil
 	}

@@ -85,30 +85,6 @@ type DeviceScreenRow struct {
 
 func (DeviceScreenRow) TableName() string { return "device_screen" }
 
-// UserDeviceRow is the user-device master row: it belongs to a user and
-// references each domain's content-addressed primary key, but does not contain
-// the volatile Live snapshot.
-// ID is an auto-increment surrogate key; MD5 is the client's Device-Info-Md5
-// (the stable-domain protobuf MD5) and stays the business-unique key.
-type UserDeviceRow struct {
-	ID         uint64            `json:"id" gorm:"primaryKey"`
-	UserID     uint64            `json:"userId" gorm:"index"`
-	MD5        string            `json:"md5" gorm:"uniqueIndex;size:32"`
-	Platform   DevicePlatform    `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind        `json:"clientKind" gorm:"type:smallint"`
-	AppID      string            `json:"appId" gorm:"size:32;index"`
-	HardwareID string            `json:"hardwareId" gorm:"size:32;index"`
-	IdentID    string            `json:"identId" gorm:"size:32;index"`
-	OsID       string            `json:"osId" gorm:"size:32;index"`
-	HostID     string            `json:"hostId" gorm:"size:32;index"`
-	NetworkID  string            `json:"networkId" gorm:"size:32;index"`
-	WebID      string            `json:"webId" gorm:"size:32;index"`
-	Ext        map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
-	LastSeenAt time.Time         `json:"lastSeenAt" gorm:"index"`
-}
-
-func (UserDeviceRow) TableName() string { return "user_device" }
-
 // DomainIDs 各域内容寻址主键（32 hex）；空串表示该域为零值、不建行。
 // 调用方必须用与主表 id 相同的算法（protobuf 确定性序列化）对**各域子消息**
 // 单独计算，不得换成其它序列化口径。
@@ -157,7 +133,7 @@ func upsertDomain[T any](db *gorm.DB, id string, payload T) error {
 // Live snapshot. It returns the master-row MD5.
 // id 与 ids 均由调用方预计算（对 protobuf 稳定域 / 各域二进制做确定性 MD5，
 // 与客户端算法一致），必填；id 为空视为非法入参。
-func Upsert(db *gorm.DB, info *UserDevice, id string, ids DomainIDs) (string, error) {
+func Upsert(db *gorm.DB, info *Device, id string, ids DomainIDs) (string, error) {
 	if info == nil || db == nil || id == "" {
 		return "", gorm.ErrInvalidData
 	}
@@ -180,9 +156,8 @@ func Upsert(db *gorm.DB, info *UserDevice, id string, ids DomainIDs) (string, er
 		}
 	}
 
-	row := UserDeviceRow{
-		UserID:     info.UserID,
-		MD5:        id,
+	row := UserDevice{
+		Md5:        id,
 		Platform:   info.Platform,
 		ClientKind: info.ClientKind,
 		AppID:      ids.App,
@@ -195,10 +170,11 @@ func Upsert(db *gorm.DB, info *UserDevice, id string, ids DomainIDs) (string, er
 		Ext:        info.Ext,
 		LastSeenAt: time.Now(),
 	}
-	// 同指纹重复上报刷新归属用户与最近活跃时间；域引用不变（md5 已是稳定内容哈希）。
+	// 同指纹重复上报只刷新最近活跃时间；归属用户由 BindUser 单独写 ——
+	// 上报接口是匿名的，绝不能让它改动 user_id。域引用不变（md5 已是稳定内容哈希）。
 	err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "md5"}},
-		DoUpdates: clause.AssignmentColumns([]string{"user_id", "last_seen_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"last_seen_at"}),
 	}).Create(&row).Error
 	if err != nil {
 		return "", err
@@ -231,7 +207,7 @@ func BindUser(db *gorm.DB, md5 string, userID uint64) error {
 	if md5 == "" || userID == 0 {
 		return nil
 	}
-	return db.Model(&UserDeviceRow{}).Where("md5 = ?", md5).
+	return db.Model(&UserDevice{}).Where("md5 = ?", md5).
 		Update("user_id", userID).Error
 }
 
@@ -246,6 +222,6 @@ func AutoMigrateDeviceTables(db *gorm.DB) error {
 		&DeviceNetworkRow{},
 		&DeviceWebRow{},
 		&DeviceScreenRow{},
-		&UserDeviceRow{},
+		&UserDevice{},
 	)
 }
