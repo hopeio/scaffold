@@ -223,6 +223,18 @@ func Upsert(db *gorm.DB, info *UserDevice, id string, ids DomainIDs) (string, er
 	return id, nil
 }
 
+// BindUser writes the owning user of the device identified by md5.
+// Device upload is anonymous (it runs before login), so the binding can only be
+// written here, from a trusted server-side user ID. An empty md5, a zero
+// userID or an unknown device is a no-op: the master row has to exist first.
+func BindUser(db *gorm.DB, md5 string, userID uint64) error {
+	if md5 == "" || userID == 0 {
+		return nil
+	}
+	return db.Model(&UserDeviceRow{}).Where("md5 = ?", md5).
+		Update("user_id", userID).Error
+}
+
 // AutoMigrateDeviceTables 迁移设备分表（不含 live）。
 func AutoMigrateDeviceTables(db *gorm.DB) error {
 	return db.AutoMigrate(

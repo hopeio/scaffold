@@ -98,3 +98,44 @@ func TestUpsertSplitTables(t *testing.T) {
 		t.Fatalf("empty domain must not create rows, got %d", webN)
 	}
 }
+
+func TestBindUser(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:device_bind?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := AutoMigrateDeviceTables(db); err != nil {
+		t.Fatal(err)
+	}
+	const deviceMD5 = "fixture-bind-md5"
+	if _, err := Upsert(db, &UserDevice{DeviceLite: DeviceLite{Platform: PlatformIOS}}, deviceMD5, DomainIDs{}); err != nil {
+		t.Fatal(err)
+	}
+	// Device upload is anonymous, so the owner can only be written by the
+	// server once the user is authenticated.
+	if err := BindUser(db, deviceMD5, 99); err != nil {
+		t.Fatal(err)
+	}
+	var row UserDeviceRow
+	if err := db.Where("md5 = ?", deviceMD5).First(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.UserID != 99 {
+		t.Fatalf("bound user: %d", row.UserID)
+	}
+	// An empty md5 or a zero userID must be a no-op, never a mass update.
+	if err := BindUser(db, "", 7); err != nil {
+		t.Fatal(err)
+	}
+	if err := BindUser(db, deviceMD5, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Where("md5 = ?", deviceMD5).First(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.UserID != 99 {
+		t.Fatalf("no-op must keep the owner: %d", row.UserID)
+	}
+}
