@@ -57,8 +57,10 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 
 func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	info := &Device{
-		Platform:       DevicePlatformIos,
-		DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
+		DeviceLite: DeviceLite{
+			Platform:       DevicePlatformIos,
+			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
+		},
 	}
 	h := make(http.Header)
 	h.Set("Location", ";;new")

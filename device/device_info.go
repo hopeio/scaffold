@@ -382,16 +382,13 @@ func (t *NetworkType) UnmarshalJSON(b []byte) error {
 }
 
 // Device 客户端上报的完整设备画像：稳定域（app/hardware/ident/os/host/network/web）
-// 加身份（Md5/Platform/ClientKind）与实时快照（DeviceLiveInfo）。它只活在内存与上报
-// 链路里，不落库：稳定域按内容寻址存进各自的 device_* 分表，主表 user_device 只留
-// 引用（见 UserDevice）。请求头的轻量快照走 DeviceLite，由 Lite() 投影得到。
+// 加 DeviceLite（身份 + 实时快照）。它只活在内存与上报链路里，不落库：稳定域按内容
+// 寻址存进各自的 device_* 分表，主表 user_device 只留引用（见 UserDevice）。
+// 实时快照经 DeviceLite.DeviceLiveInfo 带进来：不落库、不参与任何内容寻址 MD5。
 type Device struct {
-	UserID     uint64         `json:"userId" gorm:"index"`
-	Md5        string         `json:"md5" gorm:"uniqueIndex;size:32"`
-	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
+	UserID uint64 `json:"userId" gorm:"index"`
 
-	DeviceLiveInfo // volatile per-request snapshot
+	DeviceLite // 身份（Md5/Platform/ClientKind）+ 实时快照（DeviceLiveInfo）
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
@@ -405,7 +402,7 @@ type Device struct {
 }
 
 // UserDevice 是 user_device 主表的行：归属某个用户，只保存稳定身份
-//（md5/platform/clientKind）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
+// （md5/platform/clientKind）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
 // ID 是自增代理主键；Md5 是客户端 Device-Info-Md5，业务唯一键。
 type UserDevice struct {
 	ID         uint64            `json:"id" gorm:"primaryKey"`
@@ -561,13 +558,13 @@ type DeviceWebInfo struct {
 // Device-Info-Md5 / UA / XFF / Device-Dynamic-Info headers without reconstructing
 // a full UserDevice. The volatile fields are embedded via DeviceLiveInfo.
 type DeviceLite struct {
-	Md5            string         `json:"md5" gorm:"size:255"`
+	Md5            string         `json:"md5" gorm:"uniqueIndex;size:32"`
 	Platform       DevicePlatform `json:"platform" gorm:"type:smallint"`
 	ClientKind     ClientKind     `json:"clientKind" gorm:"type:smallint"`
 	Version        string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
 	AppCode        string         `json:"appCode" gorm:"size:255"`
 	AppVersion     string         `json:"appVersion" gorm:"size:255"`
-	DeviceLiveInfo // volatile per-request snapshot
+	DeviceLiveInfo                // volatile per-request snapshot
 }
 
 // Empty 是否全空。
