@@ -400,10 +400,9 @@ type Device struct {
 
 // UserDevice 是 user_device 主表的行：归属某个用户，只保存稳定身份
 //（md5/platform/clientKind）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
-// RowID 是自增代理主键（服务端内部用，故 json:"-"）；Md5 是客户端 Device-Info-Md5，
-// 业务唯一键。
+// ID 是自增代理主键；Md5 是客户端 Device-Info-Md5，业务唯一键。
 type UserDevice struct {
-	RowID      uint64            `json:"-" gorm:"primaryKey;column:id"`
+	ID         uint64            `json:"id" gorm:"primaryKey"`
 	UserID     uint64            `json:"userId" gorm:"index"`
 	Md5        string            `json:"md5" gorm:"uniqueIndex;size:32"`
 	Platform   DevicePlatform    `json:"platform" gorm:"type:smallint"`

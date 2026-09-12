@@ -72,7 +72,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	if err := db.Where("md5 = ?", deviceID).First(&master).Error; err != nil {
 		t.Fatal(err)
 	}
-	if master.RowID == 0 || master.Md5 != deviceID || master.UserID != 0 {
+	if master.ID == 0 || master.Md5 != deviceID || master.UserID != 0 {
 		t.Fatalf("master row: %+v", master)
 	}
 	var n int64
