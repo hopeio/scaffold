@@ -23,7 +23,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	if err := AutoMigrateDeviceTables(db); err != nil {
 		t.Fatal(err)
 	}
-	info := &Device{
+	info := &UserDevice{
 		DeviceLite: DeviceLite{
 			Platform:   PlatformIOS,
 			ClientKind: ClientKindMobile,
@@ -43,6 +43,7 @@ func TestUpsertSplitTables(t *testing.T) {
 	// 主键与各域主键都由调用方预计算（生产实现是 protobuf 确定性 MD5）；
 	// 本测试只关心存储行为，用固定串即可。
 	const deviceID = "fixture-stable-md5"
+	info.UserID = 42
 	ids := DomainIDs{
 		App:      "fixture-app-md5",
 		Hardware: "fixture-hw-md5",
@@ -59,6 +60,8 @@ func TestUpsertSplitTables(t *testing.T) {
 	if id1 == "" {
 		t.Fatal("empty id")
 	}
+	// A re-report refreshes the owning user (no history compat).
+	info.UserID = 7
 	id2, err := Upsert(db, info, deviceID, ids)
 	if err != nil {
 		t.Fatal(err)
@@ -66,8 +69,15 @@ func TestUpsertSplitTables(t *testing.T) {
 	if id1 != id2 {
 		t.Fatalf("idempotent md5: %s vs %s", id1, id2)
 	}
+	var master UserDeviceRow
+	if err := db.Where("md5 = ?", deviceID).First(&master).Error; err != nil {
+		t.Fatal(err)
+	}
+	if master.ID == 0 || master.MD5 != deviceID || master.UserID != 7 {
+		t.Fatalf("master row: %+v", master)
+	}
 	var n int64
-	if err := db.Model(&DeviceRow{}).Count(&n).Error; err != nil {
+	if err := db.Model(&UserDeviceRow{}).Count(&n).Error; err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {

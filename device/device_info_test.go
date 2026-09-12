@@ -56,7 +56,7 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 }
 
 func TestNetworkLiveFromHeaderReplace(t *testing.T) {
-	info := &Device{
+	info := &UserDevice{
 		DeviceLite: DeviceLite{
 			Platform:       PlatformIOS,
 			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
@@ -91,7 +91,7 @@ func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 }
 
 func TestEmptyIgnoresLive(t *testing.T) {
-	d := &Device{Web: DeviceWebInfo{UserAgent: "ua"}}
+	d := &UserDevice{Web: DeviceWebInfo{UserAgent: "ua"}}
 	if !d.Empty() {
 		t.Fatal("UA-only is not a stable identity")
 	}
