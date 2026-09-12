@@ -24,14 +24,12 @@ func TestUpsertSplitTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	info := &Device{
-		DeviceLite: DeviceLite{
-			Platform:   DevicePlatformIos,
-			ClientKind: ClientKindMobile,
-			DeviceLiveInfo: DeviceLiveInfo{
-				RamAvailMB:  1024, // 不应入库
-				NetworkType: NetworkTypeWifi,
-				Lng:         116.4,
-			},
+		Platform:   DevicePlatformIos,
+		ClientKind: ClientKindMobile,
+		DeviceLiveInfo: DeviceLiveInfo{
+			RamAvailMB:  1024, // 不应入库
+			NetworkType: NetworkTypeWifi,
+			Lng:         116.4,
 		},
 		App:      DeviceAppInfo{Code: "hoper", Version: "2.0.0"},
 		Hardware: DeviceHardwareInfo{ModelName: "iPhone 16"},
@@ -109,7 +107,7 @@ func TestBindUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	const deviceMD5 = "fixture-bind-md5"
-	if _, err := Upsert(db, &Device{DeviceLite: DeviceLite{Platform: DevicePlatformIos}}, deviceMD5, DomainIDs{}); err != nil {
+	if _, err := Upsert(db, &Device{Platform: DevicePlatformIos}, deviceMD5, DomainIDs{}); err != nil {
 		t.Fatal(err)
 	}
 	// Device upload is anonymous, so the owner can only be written by the

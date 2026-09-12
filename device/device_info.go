@@ -382,10 +382,16 @@ func (t *NetworkType) UnmarshalJSON(b []byte) error {
 }
 
 // Device 客户端上报的完整设备画像：稳定域（app/hardware/ident/os/host/network/web）
-// 加 DeviceLite（身份 + 实时快照）。它只活在内存与上报链路里，不落库：稳定域按内容
-// 寻址存进各自的 device_* 分表，主表 user_device 只留引用（见 UserDevice）。
+// 加身份（Md5/Platform/ClientKind）与实时快照（DeviceLiveInfo）。它只活在内存与上报
+// 链路里，不落库：稳定域按内容寻址存进各自的 device_* 分表，主表 user_device 只留
+// 引用（见 UserDevice）。请求头的轻量快照走 DeviceLite，由 Lite() 投影得到。
 type Device struct {
-	DeviceLite // identity (Md5/Platform/ClientKind/...) + 实时快照
+	UserID     uint64         `json:"userId" gorm:"index"`
+	Md5        string         `json:"md5" gorm:"uniqueIndex;size:32"`
+	Platform   DevicePlatform `json:"platform" gorm:"type:smallint"`
+	ClientKind ClientKind     `json:"clientKind" gorm:"type:smallint"`
+
+	DeviceLiveInfo // volatile per-request snapshot
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
@@ -585,7 +591,24 @@ func (d *Device) Lite() DeviceLite {
 	if md5 == "" {
 		md5 = d.PrimaryDeviceNo()
 	}
-	return d.DeviceLite
+	return DeviceLite{
+		Md5:        md5,
+		Platform:   d.Platform,
+		ClientKind: d.ClientKind,
+		Version:    d.OS.Version,
+		AppCode:    d.App.Code,
+		AppVersion: d.App.Version,
+		DeviceLiveInfo: DeviceLiveInfo{
+			IP:          d.IP,
+			NetworkType: d.NetworkType,
+			Lng:         d.Lng,
+			Lat:         d.Lat,
+			Area:        d.Area,
+			UserAgent:   d.UserAgent,
+			RamAvailMB:  d.RamAvailMB,
+			DiskFreeB:   d.DiskFreeB,
+		},
+	}
 }
 
 // DisplayName 人可读设备名。
