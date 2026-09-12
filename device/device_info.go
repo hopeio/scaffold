@@ -266,15 +266,26 @@ func (t TriState) IsTrue() bool  { return t == TriTrue }
 func (t TriState) IsFalse() bool { return t == TriFalse }
 func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 
-// 请求头：live 快照 + 轻量身份。完整画像走 UploadDeviceInfo。
-// Platform-Info：platform;clientKind;version（系统版本）
-// App-Info：appCode;appVersion
-// Location：lng;lat;area
-// HeaderDeviceDynamicInfo aggregates the per-request volatile snapshot
-// (network type / available RAM / free disk) that previously lived in the
-// separate Network-Type / Ram-Avail / Disk-Free headers. JSON, e.g.
-// {"networkType":"wifi","ramAvailMB":1024,"diskFreeB":500000}。
-const HeaderDeviceDynamicInfo = "Device-Dynamic-Info"
+// Non-standard request headers shared by clients (Flutter / Web / uniapp) and
+// the Go server: lightweight identity plus the volatile live snapshot. The full
+// profile is uploaded through UploadDeviceInfo instead.
+//
+// Wire names must stay stable, clients send them verbatim:
+//   - Platform-Info: platform;clientKind;osVersion
+//   - App-Info: appCode;appVersion
+//   - Location (HeaderGeoLocation): lng;lat;area. The wire name is historical:
+//     the standard Location header is a redirect header, see gox net/http.
+//   - Device-Dynamic-Info: networkType;ramAvailMB;diskFreeB (missing segments
+//     are left empty). It aggregates the volatile snapshot that previously
+//     lived in the separate Network-Type / Ram-Avail / Disk-Free headers.
+const (
+	HeaderDeviceInfo        = "Device-Info"     // full Device JSON, superseded by UploadDeviceInfo
+	HeaderDeviceInfoMd5     = "Device-Info-Md5" // content-addressed device key (Device.StableMD5)
+	HeaderPlatformInfo      = "Platform-Info"   // platform;clientKind;version (OS version)
+	HeaderAppInfo           = "App-Info"        // appCode;appVersion
+	HeaderGeoLocation       = "Location"        // lng;lat;area
+	HeaderDeviceDynamicInfo = "Device-Dynamic-Info"
+)
 
 // NetworkType 网络类型。数值对齐 common.NetworkType。
 type NetworkType int8
@@ -705,7 +716,7 @@ func LiteFromHeader(header http.Header) DeviceLite {
 	if header == nil {
 		return lite
 	}
-	platParts := splitSemiHeader(header.Get(httpx.HeaderPlatformInfo))
+	platParts := splitSemiHeader(header.Get(HeaderPlatformInfo))
 	if len(platParts) > 0 {
 		lite.Platform = ParseDevicePlatform(platParts[0])
 	}
@@ -715,14 +726,14 @@ func LiteFromHeader(header http.Header) DeviceLite {
 	if len(platParts) > 2 {
 		lite.Version = platParts[2]
 	}
-	appParts := splitSemiHeader(header.Get(httpx.HeaderAppInfo))
+	appParts := splitSemiHeader(header.Get(HeaderAppInfo))
 	if len(appParts) > 0 {
 		lite.AppCode = appParts[0]
 	}
 	if len(appParts) > 1 {
 		lite.AppVersion = appParts[1]
 	}
-	if loc := header.Get(httpx.HeaderLocation); loc != "" {
+	if loc := header.Get(HeaderGeoLocation); loc != "" {
 		lite.Lng, lite.Lat, lite.Area = parseLocationHeader(loc)
 	}
 	if xff := header.Get(httpx.HeaderXForwardedFor); xff != "" {
@@ -746,7 +757,7 @@ func LiteFromHeader(header http.Header) DeviceLite {
 			}
 		}
 	}
-	lite.Md5 = strings.TrimSpace(header.Get(httpx.HeaderDeviceInfoMd5))
+	lite.Md5 = strings.TrimSpace(header.Get(HeaderDeviceInfoMd5))
 	return lite
 }
 
