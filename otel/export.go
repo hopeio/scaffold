@@ -74,3 +74,37 @@ func (e OTLPExport) headers() map[string]string {
 	}
 	return out
 }
+
+// NormalizeOTLPProtocol normalizes a config protocol string to "grpc" or "http".
+// Unknown/empty input returns "" (callers default "" to http).
+func NormalizeOTLPProtocol(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "grpc":
+		return "grpc"
+	case "http", "http/protobuf", "http-protobuf":
+		return "http"
+	default:
+		return ""
+	}
+}
+
+// Normalize trims endpoints/headers and normalizes the protocol tag, returning a cleaned copy.
+func (e OTLPExport) Normalize() OTLPExport {
+	hdr := make(map[string]string, len(e.Headers))
+	for k, v := range e.Headers {
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		if k == "" || v == "" {
+			continue
+		}
+		hdr[k] = v
+	}
+	return OTLPExport{
+		Endpoint:        strings.TrimSpace(e.Endpoint),
+		TracesEndpoint:  strings.TrimSpace(e.TracesEndpoint),
+		MetricsEndpoint: strings.TrimSpace(e.MetricsEndpoint),
+		LogsEndpoint:    strings.TrimSpace(e.LogsEndpoint),
+		Protocol:        NormalizeOTLPProtocol(e.Protocol),
+		Headers:         hdr,
+	}
+}
