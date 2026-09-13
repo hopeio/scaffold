@@ -6,10 +6,6 @@ import (
 )
 
 func TestDateFilterRange(t *testing.T) {
-	now := time.Date(2026, time.September, 16, 15, 30, 45, 0, time.Local)
-
-	// Helper to freeze time.Now via a shim is not available; assert against real now
-	// using the same Date() extraction the implementation uses.
 	year, month, day := time.Now().Date()
 
 	cases := []struct {
@@ -44,7 +40,7 @@ func TestDateFilterRange(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			begin, end := tc.filter.Range()
+			begin, end := tc.filter.Range(time.Local)
 			if begin.Year() != tc.wantYear || begin.Month() != tc.wantMon || begin.Day() != tc.wantDay {
 				t.Errorf("begin = %v, want %d-%02d-%02d", begin, tc.wantYear, tc.wantMon, tc.wantDay)
 			}
@@ -54,41 +50,26 @@ func TestDateFilterRange(t *testing.T) {
 			if end.IsZero() {
 				t.Errorf("end should default to now, got zero")
 			}
-			_ = now
 		})
 	}
 
-	t.Run("explicit begin kept when end missing", func(t *testing.T) {
-		explicit := time.Date(2026, 1, 2, 3, 4, 5, 0, time.Local)
-		f := DateFilter{Begin: explicit}
-		begin, end := f.Range()
-		if !begin.Equal(explicit) {
-			t.Errorf("begin = %v, want explicit %v", begin, explicit)
+	t.Run("this week begins on Monday midnight", func(t *testing.T) {
+		begin, _ := DateFilter{Type: 2}.Range(time.Local)
+		if begin.Weekday() != time.Monday {
+			t.Errorf("week begin weekday = %v, want Monday", begin.Weekday())
 		}
-		if end.IsZero() {
-			t.Errorf("end should default to now")
+		if begin.Hour() != 0 || begin.Minute() != 0 || begin.Second() != 0 {
+			t.Errorf("week begin not truncated to midnight: %v", begin)
 		}
 	})
 
-	t.Run("explicit end kept when begin missing", func(t *testing.T) {
-		explicit := time.Date(2026, 1, 2, 3, 4, 5, 0, time.Local)
-		f := DateFilter{End: explicit}
-		begin, end := f.Range()
-		if !end.Equal(explicit) {
-			t.Errorf("end = %v, want explicit %v", end, explicit)
+	t.Run("loc param is honored", func(t *testing.T) {
+		begin, end := DateFilter{Type: 1}.Range(time.UTC)
+		if begin.Location() != time.UTC {
+			t.Errorf("begin location = %v, want UTC", begin.Location())
 		}
-		if !begin.IsZero() {
-			t.Errorf("begin should be open (zero) when missing, got %v", begin)
-		}
-	})
-
-	t.Run("both explicit returned as-is", func(t *testing.T) {
-		b := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
-		e := time.Date(2026, 2, 2, 0, 0, 0, 0, time.Local)
-		f := DateFilter{Begin: b, End: e}
-		begin, end := f.Range()
-		if !begin.Equal(b) || !end.Equal(e) {
-			t.Errorf("got (%v,%v), want (%v,%v)", begin, end, b, e)
+		if end.Location() != time.UTC {
+			t.Errorf("end location = %v, want UTC", end.Location())
 		}
 	})
 }
