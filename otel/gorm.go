@@ -14,6 +14,10 @@ import (
 type GORMPlugin struct {
 	Config
 	SlowSQLMs float64 // slow SQL threshold in milliseconds; defaults to 200 when 0
+	// RecordAllDuration records a duration histogram for every SQL statement
+	// (not only slow ones), enabling full SQL latency distribution (p95/p99).
+	// Off by default to skip the per-query histogram cost on hot paths.
+	RecordAllDuration bool
 }
 
 // NewGORMPlugin creates a GORMPlugin from the given configuration.
@@ -27,6 +31,7 @@ func (p *GORMPlugin) Use(db *gorm.DB) error {
 		return nil
 	}
 	slow := NewSlowSQLMetric(p.SlowSQLMs)
+	slow.RecordAllDuration = p.RecordAllDuration
 	if err := slow.Init(); err != nil {
 		return err
 	}
@@ -34,9 +39,11 @@ func (p *GORMPlugin) Use(db *gorm.DB) error {
 }
 
 type SlowSQLMetric struct {
-	ThresholdMs float64
-	counter     metric.Int64Counter
-	histogram   metric.Float64Histogram
+	ThresholdMs        float64
+	RecordAllDuration  bool
+	counter            metric.Int64Counter
+	histogram          metric.Float64Histogram
+	allDurationHistogram metric.Float64Histogram
 }
 
 // NewSlowSQLMetric creates a SlowSQLMetric with the given threshold; defaults to 200 ms when ≤ 0.
@@ -56,16 +63,37 @@ func (m *SlowSQLMetric) Init() error {
 		return err
 	}
 	m.histogram, err = meter.Float64Histogram("gorm.db.slow_sql.duration_ms", metric.WithUnit("ms"))
-	return err
+	if err != nil {
+		return err
+	}
+	if m.RecordAllDuration {
+		m.allDurationHistogram, err = meter.Float64Histogram("gorm.db.query.duration_ms",
+			metric.WithUnit("ms"),
+			metric.WithDescription("SQL statement duration in milliseconds for every query"),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Record emits counter and histogram measurements when the query duration exceeds the threshold.
 func (m *SlowSQLMetric) Record(rc *gormx.RecordContext) {
-	if rc == nil || rc.DurationMs < m.ThresholdMs {
+	if rc == nil {
 		return
 	}
 	attrs := append(rc.Attrs, attribute.String("sql.verb", sqlVerb(rc)))
 	opt := metric.WithAttributes(attrs...)
+
+	// Full SQL latency distribution: record every query when enabled.
+	if m.RecordAllDuration {
+		m.allDurationHistogram.Record(rc.Ctx, rc.DurationMs, opt)
+	}
+
+	if rc.DurationMs < m.ThresholdMs {
+		return
+	}
 	m.counter.Add(rc.Ctx, 1, opt)
 	m.histogram.Record(rc.Ctx, rc.DurationMs, opt)
 }
