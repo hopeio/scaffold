@@ -830,9 +830,6 @@ func DeviceFromJSON(raw string) *Device {
 	if s == "" {
 		return nil
 	}
-	if unescaped, err := url.QueryUnescape(s); err == nil {
-		s = strings.TrimSpace(unescaped)
-	}
 	if !strings.HasPrefix(s, "{") {
 		return nil
 	}
