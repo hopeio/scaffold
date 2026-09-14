@@ -26,7 +26,7 @@ func TestLiteFromHeader(t *testing.T) {
 	if lite.Empty() {
 		t.Fatal("expected lite")
 	}
-	if lite.Platform != DevicePlatformIos || lite.ClientKind != ClientKindMobile || lite.Version != "17.0" || lite.AppCode != "rfv" || lite.AppVersion != "1.2.3" {
+	if lite.Platform != DeviceOSIos || lite.Channel != AppChannelNative || lite.Version != "17.0" || lite.AppCode != "rfv" || lite.AppVersion != "1.2.3" {
 		t.Fatalf("app: %+v", lite)
 	}
 	if lite.Area != "上海" || lite.Lng != 121.4 || lite.Lat != 31.2 {
@@ -58,7 +58,7 @@ func TestLiteFromHeaderEmpty(t *testing.T) {
 func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	info := &Device{
 		DeviceLite: DeviceLite{
-			Platform:       DevicePlatformIos,
+			Platform:       DeviceOSIos,
 			DeviceLiveInfo: DeviceLiveInfo{Area: "old", Lng: 1, Lat: 2, NetworkType: NetworkTypeUnknown},
 		},
 	}
@@ -73,7 +73,7 @@ func TestNetworkLiveFromHeaderReplace(t *testing.T) {
 	if lite.UserAgent != "" {
 		info.Web.UserAgent = lite.UserAgent
 	}
-	if info.Platform != DevicePlatformIos {
+	if info.Platform != DeviceOSIos {
 		t.Fatal("stable fields must stay")
 	}
 	if info.DeviceLiveInfo.Area != "new" {

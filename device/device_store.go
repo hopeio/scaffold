@@ -157,18 +157,20 @@ func Upsert(db *gorm.DB, info *Device, id string, ids DomainIDs) (string, error)
 	}
 
 	row := UserDevice{
-		Md5:        id,
-		Platform:   info.Platform,
-		ClientKind: info.ClientKind,
-		AppID:      ids.App,
-		HardwareID: ids.Hardware,
-		IdentID:    ids.Ident,
-		OsID:       ids.OS,
-		HostID:     ids.Host,
-		NetworkID:  ids.Network,
-		WebID:      ids.Web,
-		Ext:        info.Ext,
-		LastSeenAt: time.Now(),
+		Md5:         id,
+		Platform:    info.Platform,
+		Channel:     info.Channel,
+		FormFactor:  info.FormFactor,
+		RuntimeHost: info.RuntimeHost,
+		AppID:       ids.App,
+		HardwareID:  ids.Hardware,
+		IdentID:     ids.Ident,
+		OsID:        ids.OS,
+		HostID:      ids.Host,
+		NetworkID:   ids.Network,
+		WebID:       ids.Web,
+		Ext:         info.Ext,
+		LastSeenAt:  time.Now(),
 	}
 	// 同指纹重复上报只刷新最近活跃时间；归属用户由 BindUser 单独写 ——
 	// 上报接口是匿名的，绝不能让它改动 user_id。域引用不变（md5 已是稳定内容哈希）。

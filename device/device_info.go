@@ -20,216 +20,495 @@ import (
 	httpx "github.com/hopeio/gox/net/http"
 )
 
-// DevicePlatform 操作系统（与 ClientKind 正交；不含 web）。数值对齐 common.DevicePlatform。
-type DevicePlatform int8
+// DeviceOS 操作系统（与 AppChannel / FormFactor 正交；不含 web）。数值对齐 common.DeviceOS。
+// 仅表示底层 OS/runtime，不隐含任何形态：Android 既可是手机也可是平板/TV/车载/嵌入式。
+type DeviceOS int8
 
 const (
-	DevicePlatformUnspecified DevicePlatform = 0
-	DevicePlatformAndroid     DevicePlatform = 1
-	DevicePlatformIos         DevicePlatform = 2
-	DevicePlatformMacos       DevicePlatform = 3
-	DevicePlatformWindows     DevicePlatform = 4
-	DevicePlatformLinux       DevicePlatform = 5
-	DevicePlatformUnknown     DevicePlatform = 6
+	DeviceOSUnspecified DeviceOS = 0
+	DeviceOSAndroid     DeviceOS = 1
+	DeviceOSIos         DeviceOS = 2
+	DeviceOSMacos       DeviceOS = 3
+	DeviceOSWindows     DeviceOS = 4
+	DeviceOSLinux       DeviceOS = 5
+	DeviceOSUnknown     DeviceOS = 6
+	DeviceOSHarmonyOS   DeviceOS = 7 // 鸿蒙
+	DeviceOSRTOS        DeviceOS = 8 // 嵌入式 RTOS（底座，非形态）
 )
 
-func (p DevicePlatform) String() string {
+func (p DeviceOS) String() string {
 	switch p {
-	case DevicePlatformAndroid:
+	case DeviceOSAndroid:
 		return "android"
-	case DevicePlatformIos:
+	case DeviceOSIos:
 		return "ios"
-	case DevicePlatformMacos:
+	case DeviceOSMacos:
 		return "macos"
-	case DevicePlatformWindows:
+	case DeviceOSWindows:
 		return "windows"
-	case DevicePlatformLinux:
+	case DeviceOSLinux:
 		return "linux"
-	case DevicePlatformUnknown:
+	case DeviceOSUnknown:
 		return "unknown"
+	case DeviceOSHarmonyOS:
+		return "harmonyos"
+	case DeviceOSRTOS:
+		return "rtos"
 	default:
 		return ""
 	}
 }
 
-// ParseDevicePlatform 解析 App-Info / JSON 线格式（短名或数字）。
-func ParseDevicePlatform(s string) DevicePlatform {
+// ParseDeviceOS 解析 Platform-Info / JSON 线格式（短名或数字）。数值对齐 common.DeviceOS。
+func ParseDeviceOS(s string) DeviceOS {
 	s = strings.TrimSpace(strings.ToLower(s))
 	switch s {
-	case "", "0", "unspecified", "deviceplatformunspecified":
-		return DevicePlatformUnspecified
-	case "1", "android", "deviceplatformandroid":
-		return DevicePlatformAndroid
-	case "2", "ios", "deviceplatformios":
-		return DevicePlatformIos
-	case "3", "macos", "deviceplatformmacos":
-		return DevicePlatformMacos
-	case "4", "windows", "deviceplatformwindows":
-		return DevicePlatformWindows
-	case "5", "linux", "deviceplatformlinux":
-		return DevicePlatformLinux
-	case "6", "unknown", "deviceplatformunknown":
-		return DevicePlatformUnknown
+	case "", "0", "unspecified":
+		return DeviceOSUnspecified
+	case "1", "android":
+		return DeviceOSAndroid
+	case "2", "ios":
+		return DeviceOSIos
+	case "3", "macos":
+		return DeviceOSMacos
+	case "4", "windows":
+		return DeviceOSWindows
+	case "5", "linux":
+		return DeviceOSLinux
+	case "6", "unknown":
+		return DeviceOSUnknown
+	case "7", "harmonyos", "hongmeng":
+		return DeviceOSHarmonyOS
+	case "8", "rtos":
+		return DeviceOSRTOS
 	default:
 		if n, err := strconv.Atoi(s); err == nil {
-			return DevicePlatform(n)
+			return DeviceOS(n)
 		}
-		return DevicePlatformUnknown
+		return DeviceOSUnspecified
 	}
 }
 
-func (p DevicePlatform) Value() (driver.Value, error) { return int64(p), nil }
+func (p DeviceOS) Value() (driver.Value, error) { return int64(p), nil }
 
-func (p *DevicePlatform) Scan(src any) error {
+func (p *DeviceOS) Scan(src any) error {
 	switch v := src.(type) {
 	case int64:
-		*p = DevicePlatform(v)
+		*p = DeviceOS(v)
 	case int32:
-		*p = DevicePlatform(v)
+		*p = DeviceOS(v)
 	case int:
-		*p = DevicePlatform(v)
+		*p = DeviceOS(v)
 	case []byte:
-		*p = ParseDevicePlatform(string(v))
+		*p = ParseDeviceOS(string(v))
 	case string:
-		*p = ParseDevicePlatform(v)
+		*p = ParseDeviceOS(v)
 	case nil:
-		*p = DevicePlatformUnspecified
+		*p = DeviceOSUnspecified
 	default:
-		return fmt.Errorf("device: cannot scan %T into DevicePlatform", src)
+		return fmt.Errorf("device: cannot scan %T into DeviceOS", src)
 	}
 	return nil
 }
 
-func (p DevicePlatform) MarshalText() ([]byte, error) { return []byte(p.String()), nil }
+func (p DeviceOS) MarshalText() ([]byte, error) { return []byte(p.String()), nil }
 
-func (p *DevicePlatform) UnmarshalText(b []byte) error {
-	*p = ParseDevicePlatform(string(b))
+func (p *DeviceOS) UnmarshalText(b []byte) error {
+	*p = ParseDeviceOS(string(b))
 	return nil
 }
 
-func (p DevicePlatform) MarshalJSON() ([]byte, error) {
+func (p DeviceOS) MarshalJSON() ([]byte, error) {
 	return json.Marshal(int(p))
 }
 
-func (p *DevicePlatform) UnmarshalJSON(b []byte) error {
+func (p *DeviceOS) UnmarshalJSON(b []byte) error {
 	b = bytesTrimSpace(b)
 	if len(b) > 0 && b[0] == '"' {
 		var s string
 		if err := json.Unmarshal(b, &s); err != nil {
 			return err
 		}
-		*p = ParseDevicePlatform(s)
+		*p = ParseDeviceOS(s)
 		return nil
 	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
 	}
-	*p = DevicePlatform(n)
+	*p = DeviceOS(n)
 	return nil
 }
 
-// ClientKind 客户端形态（与 DevicePlatform 正交）。数值对齐 common.ClientKind。
-type ClientKind int8
+// AppChannel 交付渠道（与 DeviceOS / FormFactor 正交；非 AppConfig 产品通道）。
+// 原生 App / 小程序 / 浏览器 Web / 内嵌 WebView 互不重叠，与 OS 任意组合。
+type AppChannel int8
 
 const (
-	ClientKindUnspecified ClientKind = 0
-	ClientKindMobile      ClientKind = 1
-	ClientKindTablet      ClientKind = 2
-	ClientKindDesktop     ClientKind = 3
-	ClientKindWeb         ClientKind = 4
-	ClientKindWebview     ClientKind = 5
+	AppChannelUnspecified AppChannel = 0
+	AppChannelNative      AppChannel = 1 // 原生 App
+	AppChannelMiniProgram AppChannel = 2 // 微信/支付宝/抖音等小程序
+	AppChannelWeb         AppChannel = 3 // 浏览器 Web
+	AppChannelWebview     AppChannel = 4 // 内嵌 WebView（宿主见 RuntimeHost）
 )
 
-func (k ClientKind) String() string {
+func (k AppChannel) String() string {
 	switch k {
-	case ClientKindMobile:
-		return "mobile"
-	case ClientKindTablet:
-		return "tablet"
-	case ClientKindDesktop:
-		return "desktop"
-	case ClientKindWeb:
+	case AppChannelNative:
+		return "native"
+	case AppChannelMiniProgram:
+		return "miniprogram"
+	case AppChannelWeb:
 		return "web"
-	case ClientKindWebview:
+	case AppChannelWebview:
 		return "webview"
 	default:
 		return ""
 	}
 }
 
-// ParseClientKind 解析 App-Info / JSON 线格式（短名或数字）。
-func ParseClientKind(s string) ClientKind {
+// ParseAppChannel 解析 Platform-Info / JSON 线格式（短名或数字）。
+// 兼容旧客户端上送的 form-factor 词（mobile/tablet/desktop）→ native，降低切换期丢数据。
+func ParseAppChannel(s string) AppChannel {
 	s = strings.TrimSpace(strings.ToLower(s))
 	switch s {
-	case "", "0", "unspecified", "clientkindunspecified":
-		return ClientKindUnspecified
-	case "1", "mobile", "clientkindmobile":
-		return ClientKindMobile
-	case "2", "tablet", "clientkindtablet":
-		return ClientKindTablet
-	case "3", "desktop", "clientkinddesktop":
-		return ClientKindDesktop
-	case "4", "web", "clientkindweb":
-		return ClientKindWeb
-	case "5", "webview", "clientkindwebview":
-		return ClientKindWebview
+	case "", "0", "unspecified":
+		return AppChannelUnspecified
+	case "1", "native", "mobile", "tablet", "desktop":
+		return AppChannelNative
+	case "2", "miniprogram", "mini-program", "miniapp":
+		return AppChannelMiniProgram
+	case "3", "web":
+		return AppChannelWeb
+	case "4", "webview":
+		return AppChannelWebview
 	default:
 		if n, err := strconv.Atoi(s); err == nil {
-			return ClientKind(n)
+			return AppChannel(n)
 		}
-		return ClientKindUnspecified
+		return AppChannelUnspecified
 	}
 }
 
-func (k ClientKind) Value() (driver.Value, error) { return int64(k), nil }
+func (k AppChannel) Value() (driver.Value, error) { return int64(k), nil }
 
-func (k *ClientKind) Scan(src any) error {
+func (k *AppChannel) Scan(src any) error {
 	switch v := src.(type) {
 	case int64:
-		*k = ClientKind(v)
+		*k = AppChannel(v)
 	case int32:
-		*k = ClientKind(v)
+		*k = AppChannel(v)
 	case int:
-		*k = ClientKind(v)
+		*k = AppChannel(v)
 	case []byte:
-		*k = ParseClientKind(string(v))
+		*k = ParseAppChannel(string(v))
 	case string:
-		*k = ParseClientKind(v)
+		*k = ParseAppChannel(v)
 	case nil:
-		*k = ClientKindUnspecified
+		*k = AppChannelUnspecified
 	default:
-		return fmt.Errorf("device: cannot scan %T into ClientKind", src)
+		return fmt.Errorf("device: cannot scan %T into AppChannel", src)
 	}
 	return nil
 }
 
-func (k ClientKind) MarshalText() ([]byte, error) { return []byte(k.String()), nil }
+func (k AppChannel) MarshalText() ([]byte, error) { return []byte(k.String()), nil }
 
-func (k *ClientKind) UnmarshalText(b []byte) error {
-	*k = ParseClientKind(string(b))
+func (k *AppChannel) UnmarshalText(b []byte) error {
+	*k = ParseAppChannel(string(b))
 	return nil
 }
 
-func (k ClientKind) MarshalJSON() ([]byte, error) {
+func (k AppChannel) MarshalJSON() ([]byte, error) {
 	return json.Marshal(int(k))
 }
 
-func (k *ClientKind) UnmarshalJSON(b []byte) error {
+func (k *AppChannel) UnmarshalJSON(b []byte) error {
 	b = bytesTrimSpace(b)
 	if len(b) > 0 && b[0] == '"' {
 		var s string
 		if err := json.Unmarshal(b, &s); err != nil {
 			return err
 		}
-		*k = ParseClientKind(s)
+		*k = ParseAppChannel(s)
 		return nil
 	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
 	}
-	*k = ClientKind(n)
+	*k = AppChannel(n)
+	return nil
+}
+
+// FormFactor 设备形态（与 DeviceOS / AppChannel 正交）。
+// 不推断、由客户端显式上报：Android/iOS 不一定是手机，Linux 不一定是桌面。
+type FormFactor int8
+
+const (
+	FormFactorUnspecified FormFactor = 0
+	FormFactorPhone       FormFactor = 1
+	FormFactorTablet      FormFactor = 2
+	FormFactorDesktop     FormFactor = 3
+	FormFactorLaptop      FormFactor = 4
+	FormFactorTV          FormFactor = 5
+	FormFactorWearable    FormFactor = 6
+	FormFactorEmbedded    FormFactor = 7 // 工控屏/机顶盒/POS 等嵌入式设备
+	FormFactorCar         FormFactor = 8 // 车机
+	FormFactorKiosk       FormFactor = 9 // 自助终端
+	FormFactorUnknown     FormFactor = 10
+)
+
+func (f FormFactor) String() string {
+	switch f {
+	case FormFactorPhone:
+		return "phone"
+	case FormFactorTablet:
+		return "tablet"
+	case FormFactorDesktop:
+		return "desktop"
+	case FormFactorLaptop:
+		return "laptop"
+	case FormFactorTV:
+		return "tv"
+	case FormFactorWearable:
+		return "wearable"
+	case FormFactorEmbedded:
+		return "embedded"
+	case FormFactorCar:
+		return "car"
+	case FormFactorKiosk:
+		return "kiosk"
+	case FormFactorUnknown:
+		return "unknown"
+	default:
+		return ""
+	}
+}
+
+// ParseFormFactor 解析 JSON 线格式（短名或数字）。数值对齐 common.FormFactor。
+func ParseFormFactor(s string) FormFactor {
+	s = strings.TrimSpace(strings.ToLower(s))
+	switch s {
+	case "", "0", "unspecified":
+		return FormFactorUnspecified
+	case "1", "phone":
+		return FormFactorPhone
+	case "2", "tablet":
+		return FormFactorTablet
+	case "3", "desktop":
+		return FormFactorDesktop
+	case "4", "laptop":
+		return FormFactorLaptop
+	case "5", "tv":
+		return FormFactorTV
+	case "6", "wearable":
+		return FormFactorWearable
+	case "7", "embedded":
+		return FormFactorEmbedded
+	case "8", "car":
+		return FormFactorCar
+	case "9", "kiosk":
+		return FormFactorKiosk
+	case "10", "unknown":
+		return FormFactorUnknown
+	default:
+		if n, err := strconv.Atoi(s); err == nil {
+			return FormFactor(n)
+		}
+		return FormFactorUnspecified
+	}
+}
+
+func (f FormFactor) Value() (driver.Value, error) { return int64(f), nil }
+
+func (f *FormFactor) Scan(src any) error {
+	switch v := src.(type) {
+	case int64:
+		*f = FormFactor(v)
+	case int32:
+		*f = FormFactor(v)
+	case int:
+		*f = FormFactor(v)
+	case []byte:
+		*f = ParseFormFactor(string(v))
+	case string:
+		*f = ParseFormFactor(v)
+	case nil:
+		*f = FormFactorUnspecified
+	default:
+		return fmt.Errorf("device: cannot scan %T into FormFactor", src)
+	}
+	return nil
+}
+
+func (f FormFactor) MarshalText() ([]byte, error) { return []byte(f.String()), nil }
+
+func (f *FormFactor) UnmarshalText(b []byte) error {
+	*f = ParseFormFactor(string(b))
+	return nil
+}
+
+func (f FormFactor) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int(f))
+}
+
+func (f *FormFactor) UnmarshalJSON(b []byte) error {
+	b = bytesTrimSpace(b)
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*f = ParseFormFactor(s)
+		return nil
+	}
+	var n int
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*f = FormFactor(n)
+	return nil
+}
+
+// RuntimeHost 小程序 / WebView 宿主（仅 AppChannel=MiniProgram/Webview 有意义）。
+// 区分各平台小程序（微信/支付宝/抖音/百度/QQ/快手/京东/飞书/小红书/鸿蒙）与独立 App 内嵌 WebView。
+// 宿主枚举数值对齐 proto common.RuntimeHost；uniapp 平台串（mp-weixin 等）可直接解析。
+type RuntimeHost int8
+
+const (
+	RuntimeHostUnspecified RuntimeHost = 0
+	RuntimeHostWeChat      RuntimeHost = 1  // 微信小程序（mp-weixin）
+	RuntimeHostAlipay      RuntimeHost = 2  // 支付宝小程序（mp-alipay）
+	RuntimeHostDouyin      RuntimeHost = 3  // 抖音/字节小程序（mp-toutiao）
+	RuntimeHostBaidu       RuntimeHost = 4  // 百度小程序（mp-baidu）
+	RuntimeHostApp         RuntimeHost = 5  // 独立 App 内嵌的 WebView
+	RuntimeHostQQ          RuntimeHost = 6  // QQ 小程序（mp-qq）
+	RuntimeHostKuaishou    RuntimeHost = 7  // 快手小程序（mp-kuaishou）
+	RuntimeHostJD          RuntimeHost = 8  // 京东小程序（mp-jd）
+	RuntimeHostLark        RuntimeHost = 9  // 飞书小程序（mp-lark）
+	RuntimeHostXHS         RuntimeHost = 10 // 小红书小程序（mp-xhs）
+	RuntimeHostHarmony     RuntimeHost = 11 // 鸿蒙小程序（mp-harmony）
+	RuntimeHostQuickApp    RuntimeHost = 12 // 快应用（quickapp-webview）
+)
+
+func (h RuntimeHost) String() string {
+	switch h {
+	case RuntimeHostWeChat:
+		return "wechat"
+	case RuntimeHostAlipay:
+		return "alipay"
+	case RuntimeHostDouyin:
+		return "douyin"
+	case RuntimeHostBaidu:
+		return "baidu"
+	case RuntimeHostApp:
+		return "app"
+	case RuntimeHostQQ:
+		return "qq"
+	case RuntimeHostKuaishou:
+		return "kuaishou"
+	case RuntimeHostJD:
+		return "jd"
+	case RuntimeHostLark:
+		return "lark"
+	case RuntimeHostXHS:
+		return "xhs"
+	case RuntimeHostHarmony:
+		return "harmony"
+	case RuntimeHostQuickApp:
+		return "quickapp"
+	default:
+		return ""
+	}
+}
+
+// ParseRuntimeHost 解析 JSON 线格式（短名或数字）。数值对齐 common.RuntimeHost。
+func ParseRuntimeHost(s string) RuntimeHost {
+	s = strings.TrimSpace(strings.ToLower(s))
+	switch s {
+	case "", "0", "unspecified":
+		return RuntimeHostUnspecified
+	case "1", "wechat", "wx", "mp-weixin":
+		return RuntimeHostWeChat
+	case "2", "alipay", "mp-alipay":
+		return RuntimeHostAlipay
+	case "3", "douyin", "toutiao", "mp-toutiao":
+		return RuntimeHostDouyin
+	case "4", "baidu", "mp-baidu":
+		return RuntimeHostBaidu
+	case "5", "app", "standalone", "standaloneapp":
+		return RuntimeHostApp
+	case "6", "qq", "mp-qq":
+		return RuntimeHostQQ
+	case "7", "kuaishou", "mp-kuaishou":
+		return RuntimeHostKuaishou
+	case "8", "jd", "mp-jd":
+		return RuntimeHostJD
+	case "9", "lark", "feishu", "mp-lark":
+		return RuntimeHostLark
+	case "10", "xhs", "xiaohongshu", "mp-xhs":
+		return RuntimeHostXHS
+	case "11", "harmony", "mp-harmony":
+		return RuntimeHostHarmony
+	case "12", "quickapp", "quickapp-webview":
+		return RuntimeHostQuickApp
+	default:
+		if n, err := strconv.Atoi(s); err == nil {
+			return RuntimeHost(n)
+		}
+		return RuntimeHostUnspecified
+	}
+}
+
+func (h RuntimeHost) Value() (driver.Value, error) { return int64(h), nil }
+
+func (h *RuntimeHost) Scan(src any) error {
+	switch v := src.(type) {
+	case int64:
+		*h = RuntimeHost(v)
+	case int32:
+		*h = RuntimeHost(v)
+	case int:
+		*h = RuntimeHost(v)
+	case []byte:
+		*h = ParseRuntimeHost(string(v))
+	case string:
+		*h = ParseRuntimeHost(v)
+	case nil:
+		*h = RuntimeHostUnspecified
+	default:
+		return fmt.Errorf("device: cannot scan %T into RuntimeHost", src)
+	}
+	return nil
+}
+
+func (h RuntimeHost) MarshalText() ([]byte, error) { return []byte(h.String()), nil }
+
+func (h *RuntimeHost) UnmarshalText(b []byte) error {
+	*h = ParseRuntimeHost(string(b))
+	return nil
+}
+
+func (h RuntimeHost) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int(h))
+}
+
+func (h *RuntimeHost) UnmarshalJSON(b []byte) error {
+	b = bytesTrimSpace(b)
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*h = ParseRuntimeHost(s)
+		return nil
+	}
+	var n int
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*h = RuntimeHost(n)
 	return nil
 }
 
@@ -262,7 +541,7 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 // profile is uploaded through UploadDeviceInfo instead.
 //
 // Wire names must stay stable, clients send them verbatim:
-//   - Platform-Info: platform;clientKind;osVersion
+//   - Platform-Info: platform;channel;osVersion
 //   - App-Info: appCode;appVersion
 //   - Location (HeaderGeoLocation): lng;lat;area. The wire name is historical:
 //     the standard Location header is a redirect header, see gox net/http.
@@ -271,7 +550,7 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 //     lived in the separate Network-Type / Ram-Avail / Disk-Free headers.
 const (
 	HeaderDeviceInfoMd5     = "Device-Info-Md5" // content-addressed device key (Device.StableMD5)
-	HeaderPlatformInfo      = "Platform-Info"   // platform;clientKind;version (OS version)
+	HeaderPlatformInfo      = "Platform-Info"   // platform;channel;version (OS version)
 	HeaderAppInfo           = "App-Info"        // appCode;appVersion
 	HeaderGeoLocation       = "Location"        // lng;lat;area
 	HeaderDeviceDynamicInfo = "Device-Dynamic-Info"
@@ -388,7 +667,7 @@ func (t *NetworkType) UnmarshalJSON(b []byte) error {
 type Device struct {
 	UserID uint64 `json:"userId" gorm:"index"`
 
-	DeviceLite // 身份（Md5/Platform/ClientKind）+ 实时快照（DeviceLiveInfo）
+	DeviceLite // 身份（Md5/Platform/Channel/FormFactor/RuntimeHost）+ 实时快照（DeviceLiveInfo）
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
@@ -402,23 +681,25 @@ type Device struct {
 }
 
 // UserDevice 是 user_device 主表的行：归属某个用户，只保存稳定身份
-// （md5/platform/clientKind）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
+// （md5/platform/channel）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
 // ID 是自增代理主键；Md5 是客户端 Device-Info-Md5，业务唯一键。
 type UserDevice struct {
-	ID         uint64            `json:"id" gorm:"primaryKey"`
-	UserID     uint64            `json:"userId" gorm:"index"`
-	Md5        string            `json:"md5" gorm:"uniqueIndex;size:32"`
-	Platform   DevicePlatform    `json:"platform" gorm:"type:smallint"`
-	ClientKind ClientKind        `json:"clientKind" gorm:"type:smallint"`
-	AppID      string            `json:"appId" gorm:"size:32;index"`
-	HardwareID string            `json:"hardwareId" gorm:"size:32;index"`
-	IdentID    string            `json:"identId" gorm:"size:32;index"`
-	OsID       string            `json:"osId" gorm:"size:32;index"`
-	HostID     string            `json:"hostId" gorm:"size:32;index"`
-	NetworkID  string            `json:"networkId" gorm:"size:32;index"`
-	WebID      string            `json:"webId" gorm:"size:32;index"`
-	Ext        map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
-	LastSeenAt time.Time         `json:"lastSeenAt" gorm:"index"`
+	ID          uint64            `json:"id" gorm:"primaryKey"`
+	UserID      uint64            `json:"userId" gorm:"index"`
+	Md5         string            `json:"md5" gorm:"uniqueIndex;size:32"`
+	Platform    DeviceOS          `json:"platform" gorm:"column:platform;type:smallint"`
+	Channel     AppChannel        `json:"channel" gorm:"column:client_kind;type:smallint"`
+	FormFactor  FormFactor        `json:"formFactor" gorm:"column:form_factor;type:smallint"`
+	RuntimeHost RuntimeHost       `json:"runtimeHost" gorm:"column:runtime_host;type:smallint"`
+	AppID       string            `json:"appId" gorm:"size:32;index"`
+	HardwareID  string            `json:"hardwareId" gorm:"size:32;index"`
+	IdentID     string            `json:"identId" gorm:"size:32;index"`
+	OsID        string            `json:"osId" gorm:"size:32;index"`
+	HostID      string            `json:"hostId" gorm:"size:32;index"`
+	NetworkID   string            `json:"networkId" gorm:"size:32;index"`
+	WebID       string            `json:"webId" gorm:"size:32;index"`
+	Ext         map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
+	LastSeenAt  time.Time         `json:"lastSeenAt" gorm:"index"`
 }
 
 func (UserDevice) TableName() string { return "user_device" }
@@ -494,6 +775,8 @@ type DeviceOSInfo struct {
 	Edition       string `json:"edition" gorm:"size:128"`
 	KernelVersion string `json:"kernelVersion" gorm:"size:255"`
 	Arch          string `json:"arch" gorm:"size:128"`
+	OSSkin        string `json:"osSkin" gorm:"size:64"`        // OS 厂商衍生版 / 皮肤名（HyperOS/ColorOS/MIUI…）
+	OSSkinVersion string `json:"osSkinVersion" gorm:"size:32"` // 皮肤自身版本，如 HyperOS 1.0
 }
 
 // DeviceHostInfo is the relatively stable host profile (locale / language / capacity).
@@ -558,19 +841,21 @@ type DeviceWebInfo struct {
 // Device-Info-Md5 / UA / XFF / Device-Dynamic-Info headers without reconstructing
 // a full UserDevice. The volatile fields are embedded via DeviceLiveInfo.
 type DeviceLite struct {
-	Md5            string         `json:"md5" gorm:"uniqueIndex;size:32"`
-	Platform       DevicePlatform `json:"platform" gorm:"type:smallint"`
-	ClientKind     ClientKind     `json:"clientKind" gorm:"type:smallint"`
-	Version        string         `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
-	AppCode        string         `json:"appCode" gorm:"size:255"`
-	AppVersion     string         `json:"appVersion" gorm:"size:255"`
-	DeviceLiveInfo                // volatile per-request snapshot
+	Md5            string      `json:"md5" gorm:"uniqueIndex;size:32"`
+	Platform       DeviceOS    `json:"platform" gorm:"type:smallint"`
+	Channel        AppChannel  `json:"channel" gorm:"type:smallint"`
+	FormFactor     FormFactor  `json:"formFactor" gorm:"type:smallint"`
+	RuntimeHost    RuntimeHost `json:"runtimeHost" gorm:"type:smallint"`
+	Version        string      `json:"version" gorm:"size:64"` // 系统版本（OS.Version）
+	AppCode        string      `json:"appCode" gorm:"size:255"`
+	AppVersion     string      `json:"appVersion" gorm:"size:255"`
+	DeviceLiveInfo             // volatile per-request snapshot
 }
 
 // Empty 是否全空。
 func (l DeviceLite) Empty() bool {
 	return l.Md5 == "" &&
-		l.Platform == DevicePlatformUnspecified && l.ClientKind == ClientKindUnspecified &&
+		l.Platform == DeviceOSUnspecified && l.Channel == AppChannelUnspecified &&
 		l.Version == "" &&
 		l.AppCode == "" && l.AppVersion == "" &&
 		l.IP == nil && l.Area == "" &&
@@ -631,16 +916,16 @@ func (d *Device) PrimaryDeviceNo() string {
 	)
 }
 
-// Normalize 补全 platform / clientKind 等可推导字段。
+// Normalize 补全 platform 等可推导字段。channel / formFactor / runtimeHost 由客户端显式上报，不推断。
 func (d *Device) Normalize() {
 	if d == nil {
 		return
 	}
-	if d.Platform == DevicePlatformUnspecified {
+	if d.Platform == DeviceOSUnspecified {
 		d.Platform = inferPlatform(d)
 	}
-	if d.ClientKind == ClientKindUnspecified {
-		d.ClientKind = inferClientKind(d.Platform)
+	if d.OS.OSSkin != "" {
+		d.OS.OSSkin = strings.TrimSpace(d.OS.OSSkin)
 	}
 	if d.App.Version == "" && d.App.Build != "" {
 		d.App.Version = d.App.Build
@@ -670,37 +955,32 @@ func (d *Device) Normalize() {
 	}
 }
 
-func inferPlatform(d *Device) DevicePlatform {
-	s := strings.ToLower(strings.TrimSpace(d.OS.Name + " " + d.Platform.String()))
+func inferPlatform(d *Device) DeviceOS {
+	s := strings.ToLower(strings.TrimSpace(d.OS.Name + " " + d.OS.OSSkin + " " + d.OS.Edition + " " + d.Platform.String()))
 	switch {
 	case strings.Contains(s, "android"):
-		return DevicePlatformAndroid
+		return DeviceOSAndroid
+	// 厂商 OS 衍生版（均为 Android 衍生），只上报皮肤名时也能归到 Android。
+	case strings.Contains(s, "hyperos"), strings.Contains(s, "coloros"), strings.Contains(s, "miui"),
+		strings.Contains(s, "one ui"), strings.Contains(s, "originos"), strings.Contains(s, "flyme"),
+		strings.Contains(s, "emui"), strings.Contains(s, "magicos"), strings.Contains(s, "funtouchos"):
+		return DeviceOSAndroid
 	case strings.Contains(s, "ios"), strings.Contains(s, "iphone"), strings.Contains(s, "ipad"):
-		return DevicePlatformIos
+		return DeviceOSIos
 	case strings.Contains(s, "macos"), strings.Contains(s, "darwin"), strings.Contains(s, "mac os"):
-		return DevicePlatformMacos
+		return DeviceOSMacos
 	case strings.Contains(s, "windows"):
-		return DevicePlatformWindows
+		return DeviceOSWindows
 	case strings.Contains(s, "linux"):
-		return DevicePlatformLinux
+		return DeviceOSLinux
+	case strings.Contains(s, "harmonyos"), strings.Contains(s, "harmony"), strings.Contains(s, "hongmeng"):
+		return DeviceOSHarmonyOS
 	case d.ID.IDFV != "" || d.ID.IDFA != "":
-		return DevicePlatformIos
+		return DeviceOSIos
 	case d.ID.AndroidID != "" || d.ID.OAID != "" || d.ID.GAID != "" || d.ID.IMEI != "":
-		return DevicePlatformAndroid
+		return DeviceOSAndroid
 	default:
-		return DevicePlatformUnknown
-	}
-}
-
-// inferClientKind 仅能从 platform 推断粗粒度形态；tablet / webview 须由客户端显式上报。
-func inferClientKind(platform DevicePlatform) ClientKind {
-	switch platform {
-	case DevicePlatformAndroid, DevicePlatformIos:
-		return ClientKindMobile
-	case DevicePlatformMacos, DevicePlatformWindows, DevicePlatformLinux:
-		return ClientKindDesktop
-	default:
-		return ClientKindUnspecified
+		return DeviceOSUnspecified
 	}
 }
 
@@ -714,7 +994,7 @@ func firstNonEmpty(ss ...string) string {
 }
 
 // LiteFromHeader 从请求头组装 DeviceLite（= AccessDevice）。
-// Platform-Info = platform;clientKind;version
+// Platform-Info = platform;channel;version
 // App-Info = appCode;appVersion
 // Location = lng;lat;area
 // 另含 Device-Info-Md5 / User-Agent / X-Forwarded-For。
@@ -725,10 +1005,10 @@ func LiteFromHeader(header http.Header) DeviceLite {
 	}
 	platParts := splitSemiHeader(header.Get(HeaderPlatformInfo))
 	if len(platParts) > 0 {
-		lite.Platform = ParseDevicePlatform(platParts[0])
+		lite.Platform = ParseDeviceOS(platParts[0])
 	}
 	if len(platParts) > 1 {
-		lite.ClientKind = ParseClientKind(platParts[1])
+		lite.Channel = ParseAppChannel(platParts[1])
 	}
 	if len(platParts) > 2 {
 		lite.Version = platParts[2]
@@ -818,7 +1098,7 @@ func (d *Device) Empty() bool {
 	if d == nil {
 		return true
 	}
-	platEmpty := d.Platform == DevicePlatformUnspecified || d.Platform == DevicePlatformUnknown
+	platEmpty := d.Platform == DeviceOSUnspecified || d.Platform == DeviceOSUnknown
 	return platEmpty &&
 		d.DisplayName() == "" && d.PrimaryDeviceNo() == "" &&
 		d.App.Code == "" && d.App.Version == "" && d.Web.Browser == "" &&
