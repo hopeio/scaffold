@@ -49,6 +49,5 @@ func Map(err error, code ErrCode) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return DeadlineExceeded
 	}
-	log.Errorw(code.String(), zap.Error(err))
 	return code
 }
