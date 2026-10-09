@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-// 查询参数：e=过期时间戳（秒），s=签名。
+// Query params: e=expiry timestamp (seconds), s=signature.
 const (
 	ExpiryParam = "e"
 	ValueParam  = "s"
 )
 
-// Sign 对存储 key 与过期时间签名；secret 为空表示不签名。
+// Sign signs a storage key with an expiry; an empty secret means unsigned.
 func Sign(secret, key string, expiryUnix int64) string {
 	if secret == "" || key == "" {
 		return ""
@@ -29,7 +29,7 @@ func Sign(secret, key string, expiryUnix int64) string {
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// Query 生成 `e=...&s=...`；无密钥或命中公开前缀时返回空串。
+// Query builds `e=...&s=...`; returns empty when unsigned or hitting a public prefix.
 func Query(secret, key string, ttl time.Duration, publicPrefixes []string) string {
 	if secret == "" || key == "" || IsPublic(publicPrefixes, key) {
 		return ""
@@ -45,7 +45,7 @@ func Query(secret, key string, ttl time.Duration, publicPrefixes []string) strin
 	return ExpiryParam + "=" + strconv.FormatInt(exp, 10) + "&" + ValueParam + "=" + sig
 }
 
-// Verify 校验签名与有效期。
+// Verify checks the signature and validity window.
 func Verify(secret, key, expiry, sig string) bool {
 	if secret == "" || key == "" || expiry == "" || sig == "" {
 		return false
@@ -61,7 +61,7 @@ func Verify(secret, key, expiry, sig string) bool {
 	return hmac.Equal([]byte(want), []byte(sig))
 }
 
-// IsPublic 命中前缀的对象始终匿名可读（开屏图等）。
+// IsPublic reports keys always readable anonymously (splash images, etc.).
 func IsPublic(prefixes []string, key string) bool {
 	if key == "" {
 		return false
@@ -75,7 +75,8 @@ func IsPublic(prefixes []string, key string) bool {
 	return false
 }
 
-// IsPlainMD5 判断 ETag 是否就是对象 MD5；分片上传是 `<hash>-<parts>`，不能直接比对。
+// IsPlainMD5 reports whether an ETag is the object MD5; multipart uploads are
+// `<hash>-<parts>` and cannot be compared directly.
 func IsPlainMD5(s string) bool {
 	if len(s) != 32 {
 		return false
