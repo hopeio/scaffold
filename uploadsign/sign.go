@@ -1,5 +1,5 @@
-// Package uploadsign 为 /upload/ 链接做 HMAC 签名与校验。
-// 独立于 global：那个包 init 会连库，纯逻辑放这里才可测。
+// Package uploadsign signs stored-object URLs with an HMAC'd expiry and
+// verifies them. Pure logic, no global dependency, so it stays testable.
 package uploadsign
 
 import (

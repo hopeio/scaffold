@@ -23,7 +23,6 @@ func StorageKey(s, bucket string) string {
 	if u, err := url.Parse(s); err == nil && u.Scheme != "" && u.Host != "" {
 		s = u.Path
 	}
-	s = strings.TrimPrefix(s, "/upload/")
 	s = strings.TrimPrefix(s, "/")
 	// Path-style OSS URLs are /{bucket}/{key}; strip bucket when present.
 	if b := strings.Trim(bucket, "/"); b != "" {
