@@ -13,6 +13,7 @@ require (
 	github.com/hopeio/gox v1.12.1-0.20260904073015-6616f818204d
 	github.com/hopeio/mix v1.21.2
 	github.com/hopeio/protobuf v0.9.3
+	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20261008081544-02f04aa559ac
 	github.com/redis/go-redis/extra/redisotel/v9 v9.22.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/xuri/excelize/v2 v2.11.0
