@@ -23,10 +23,12 @@ func NewRedisPlugin(cfg RedisPlugin) *RedisPlugin {
 }
 
 // Instrument installs redisotel tracing and/or metrics hooks on the given client.
-// A nil client is legal: SkipInjectDaos (test/CI config) leaves the field as a
-// typed-nil pointer, which a plain `client == nil` check misses.
+// A missing client is a no-op. Callers that hold a partially assembled Dao (for
+// example one built with RootConfig.SkipInjectDaos) pass a nil *redis.Client,
+// which lands here as a non-nil interface carrying a nil pointer, so the check
+// must be the typed-nil aware isNilValue rather than a plain == nil.
 func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
-	if p == nil || isNilClient(client) {
+	if p == nil || isNilValue(client) {
 		return nil
 	}
 	if p.Tracing {
@@ -42,12 +44,17 @@ func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
 	return nil
 }
 
-// isNilClient reports whether the interface holds a typed-nil pointer — a plain
-// `client == nil` comparison misses a nil *redis.Client stored inside the interface.
-func isNilClient(client redis.UniversalClient) bool {
-	if client == nil {
+// isNilValue reports whether v is untyped nil or an interface carrying a nil
+// pointer, map, slice, func, chan or unsafe pointer. Passing (*redis.Client)(nil)
+// into an interface parameter yields a non-nil interface, which == nil misses.
+func isNilValue(v any) bool {
+	if v == nil {
 		return true
 	}
-	v := reflect.ValueOf(client)
-	return v.Kind() == reflect.Pointer && v.IsNil()
+	switch rv := reflect.ValueOf(v); rv.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.UnsafePointer:
+		return rv.IsNil()
+	default:
+		return false
+	}
 }
