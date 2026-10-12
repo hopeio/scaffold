@@ -1,6 +1,8 @@
 package otel
 
 import (
+	"reflect"
+
 	redisotel "github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 )
@@ -21,8 +23,10 @@ func NewRedisPlugin(cfg RedisPlugin) *RedisPlugin {
 }
 
 // Instrument installs redisotel tracing and/or metrics hooks on the given client.
+// A nil client is legal: SkipInjectDaos (test/CI config) leaves the field as a
+// typed-nil pointer, which a plain `client == nil` check misses.
 func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
-	if p == nil || client == nil {
+	if p == nil || isNilClient(client) {
 		return nil
 	}
 	if p.Tracing {
@@ -36,4 +40,14 @@ func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
 		}
 	}
 	return nil
+}
+
+// isNilClient reports whether the interface holds a typed-nil pointer — a plain
+// `client == nil` comparison misses a nil *redis.Client stored inside the interface.
+func isNilClient(client redis.UniversalClient) bool {
+	if client == nil {
+		return true
+	}
+	v := reflect.ValueOf(client)
+	return v.Kind() == reflect.Pointer && v.IsNil()
 }
