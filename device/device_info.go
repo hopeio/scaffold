@@ -123,15 +123,6 @@ func (p DeviceOS) MarshalJSON() ([]byte, error) {
 }
 
 func (p *DeviceOS) UnmarshalJSON(b []byte) error {
-	b = bytesTrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
-		var s string
-		if err := json.Unmarshal(b, &s); err != nil {
-			return err
-		}
-		*p = ParseDeviceOS(s)
-		return nil
-	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
@@ -224,15 +215,6 @@ func (k AppChannel) MarshalJSON() ([]byte, error) {
 }
 
 func (k *AppChannel) UnmarshalJSON(b []byte) error {
-	b = bytesTrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
-		var s string
-		if err := json.Unmarshal(b, &s); err != nil {
-			return err
-		}
-		*k = ParseAppChannel(s)
-		return nil
-	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
@@ -354,15 +336,6 @@ func (f FormFactor) MarshalJSON() ([]byte, error) {
 }
 
 func (f *FormFactor) UnmarshalJSON(b []byte) error {
-	b = bytesTrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
-		var s string
-		if err := json.Unmarshal(b, &s); err != nil {
-			return err
-		}
-		*f = ParseFormFactor(s)
-		return nil
-	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
@@ -495,25 +468,12 @@ func (h RuntimeHost) MarshalJSON() ([]byte, error) {
 }
 
 func (h *RuntimeHost) UnmarshalJSON(b []byte) error {
-	b = bytesTrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
-		var s string
-		if err := json.Unmarshal(b, &s); err != nil {
-			return err
-		}
-		*h = ParseRuntimeHost(s)
-		return nil
-	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
 	}
 	*h = RuntimeHost(n)
 	return nil
-}
-
-func bytesTrimSpace(b []byte) []byte {
-	return []byte(strings.TrimSpace(string(b)))
 }
 
 // TriState 三态开关：未采集 / 否 / 是（避免 bool 零值与「未填」混淆）。
@@ -643,15 +603,6 @@ func (t NetworkType) MarshalJSON() ([]byte, error) {
 }
 
 func (t *NetworkType) UnmarshalJSON(b []byte) error {
-	b = bytesTrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
-		var s string
-		if err := json.Unmarshal(b, &s); err != nil {
-			return err
-		}
-		*t = ParseNetworkType(s)
-		return nil
-	}
 	var n int
 	if err := json.Unmarshal(b, &n); err != nil {
 		return err
@@ -1103,21 +1054,6 @@ func (d *Device) Empty() bool {
 		d.DisplayName() == "" && d.PrimaryDeviceNo() == "" &&
 		d.App.Code == "" && d.App.Version == "" && d.Web.Browser == "" &&
 		d.OS.Name == "" && d.OS.Version == "" && len(d.Ext) == 0
-}
-
-func DeviceFromJSON(raw string) *Device {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return nil
-	}
-	if !strings.HasPrefix(s, "{") {
-		return nil
-	}
-	info := new(Device)
-	if err := json.Unmarshal([]byte(s), info); err != nil {
-		return nil
-	}
-	return info
 }
 
 func firstForwardedIP(xff string) string {
