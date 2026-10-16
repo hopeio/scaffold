@@ -88,7 +88,7 @@ func TestMarshalErrRespProtobuf(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ei.Reason != "auth.err.notActivated" || ei.Metadata["type"] != "Apple" {
-		t.Fatalf("ErrorInfo=%+v", ei)
+		t.Fatalf("ErrorInfo=%v", &ei)
 	}
 }
 
@@ -124,6 +124,6 @@ func TestHandleErrorProtobufHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ei.Reason != "auth.err.thirdLogin" || ei.Metadata["type"] != "Apple" {
-		t.Fatalf("ErrorInfo=%+v", ei)
+		t.Fatalf("ErrorInfo=%v", &ei)
 	}
 }
