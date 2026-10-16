@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	jsonx "github.com/hopeio/gox/encoding/json"
-	esx "github.com/hopeio/gox/database/elasticsearch"
 )
 
 // GetResponseData reads and decodes an Elasticsearch API response body into T.
@@ -36,8 +35,8 @@ func GetResponseData[T any](response *esapi.Response, err error) (*T, error) {
 }
 
 // GetSearchResponseData decodes an Elasticsearch search response into a typed SearchResponse wrapper.
-func GetSearchResponseData[T any](response *esapi.Response, err error) (*esx.SearchResponse[T], error) {
-	return GetResponseData[esx.SearchResponse[T]](response, err)
+func GetSearchResponseData[T any](response *esapi.Response, err error) (*SearchResponse[T], error) {
+	return GetResponseData[SearchResponse[T]](response, err)
 }
 
 // CreateDocument serializes obj as JSON and creates an Elasticsearch document with the given index and ID.
