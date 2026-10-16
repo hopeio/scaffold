@@ -1,0 +1,57 @@
+/*
+ * Copyright 2026 hopeio. All rights reserved.
+ * Licensed under the MIT License that can be found in the LICENSE file.
+ * @Created by jyb
+ */
+
+package datasource
+
+import (
+	"database/sql"
+
+	_ "github.com/apache/arrow-adbc/go/adbc/sqldriver/flightsql"
+)
+
+// FlightSQLConfig opens an Arrow Flight SQL endpoint through the ADBC driver.
+type FlightSQLConfig struct {
+	// DSN is the flightsql URI, e.g. grpc://host:port?username=...&password=...
+	DSN string
+}
+
+// BeforeInject is a no-op satisfying the config injection contract.
+func (c *FlightSQLConfig) BeforeInject() {}
+
+// AfterInject is a no-op satisfying the config injection contract.
+func (c *FlightSQLConfig) AfterInject() {}
+
+// Build opens a FlightSQL database via the registered ADBC driver. The returned
+// handle is lazy: sql.Open only validates driver presence, it does not connect.
+func (c *FlightSQLConfig) Build() (*sql.DB, error) {
+	return sql.Open("flightsql", c.DSN)
+}
+
+// FlightSQLDB is the injectable host around a FlightSQL connection pool.
+type FlightSQLDB struct {
+	*sql.DB
+	Conf FlightSQLConfig
+}
+
+// Config returns the embedded Conf as the configuration for injection.
+func (m *FlightSQLDB) Config() any {
+	return &m.Conf
+}
+
+// Init opens the FlightSQL database and stores it.
+func (m *FlightSQLDB) Init() error {
+	var err error
+	m.DB, err = m.Conf.Build()
+	return err
+}
+
+// Close closes the FlightSQL database connection if it was initialized.
+func (m *FlightSQLDB) Close() error {
+	if m.DB == nil {
+		return nil
+	}
+	return m.DB.Close()
+}
