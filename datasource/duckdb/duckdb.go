@@ -4,7 +4,7 @@
  * @Created by jyb
  */
 
-package datasource
+package duckdb
 
 import (
 	"database/sql"
@@ -21,42 +21,42 @@ import (
 // win:  PATH=/path/to/libs:$PATH, or copy the dll next to the binary
 // (https://github.com/marcboeker/go-duckdb/issues/115)
 
-// DuckDBConfig opens an embedded (file path) or in-memory (":memory:") DuckDB.
-type DuckDBConfig struct {
+// Config opens an embedded (file path) or in-memory (":memory:") DuckDB.
+type Config struct {
 	DSN string `json:"dsn"`
 }
 
 // BeforeInject is a no-op satisfying the config injection contract.
-func (c *DuckDBConfig) BeforeInject() {}
+func (c *Config) BeforeInject() {}
 
 // AfterInject is a no-op satisfying the config injection contract.
-func (c *DuckDBConfig) AfterInject() {}
+func (c *Config) AfterInject() {}
 
 // Build opens a DuckDB database using the standard database/sql interface.
-func (c *DuckDBConfig) Build() (*sql.DB, error) {
+func (c *Config) Build() (*sql.DB, error) {
 	return sql.Open("duckdb", c.DSN)
 }
 
-// DuckDB is the injectable host around a DuckDB handle.
-type DuckDB struct {
+// DB is the injectable host around a DuckDB handle.
+type DB struct {
 	*sql.DB
-	Conf DuckDBConfig
+	Conf Config
 }
 
 // Config returns the embedded Conf as the configuration for injection.
-func (m *DuckDB) Config() any {
+func (m *DB) Config() any {
 	return &m.Conf
 }
 
 // Init opens the DuckDB database and stores it.
-func (m *DuckDB) Init() error {
+func (m *DB) Init() error {
 	var err error
 	m.DB, err = m.Conf.Build()
 	return err
 }
 
 // Close closes the DuckDB database connection if it was initialized.
-func (m *DuckDB) Close() error {
+func (m *DB) Close() error {
 	if m.DB == nil {
 		return nil
 	}
