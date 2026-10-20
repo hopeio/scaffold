@@ -13,10 +13,9 @@ import (
 )
 
 // Storage: one row per physical device, one row per (device, app), attributes as
-// plain columns, extension key-values as jsonb. There is no older layout beside it:
-// the content-addressed domain tables and the profile-digest device key they hung on
-// are gone, because digesting the profile made a language switch or an app upgrade
-// look like a new device.
+// plain columns, extension key-values as jsonb. This is the only device layout, and
+// identity is always a real device id: digesting the profile would make a language
+// switch or an app upgrade look like a new device.
 //
 // Identity vs profile: identity is canonical_key below, derived server-side from the
 // strongest device id present in the report, falling back to the client-generated DID.
@@ -45,9 +44,8 @@ const (
 )
 
 // DeviceRow is one physical device. A model/OS/app change updates this row in
-// place; it never creates a second row (that was the core defect of the md5
-// digest key). Two owners over time are two rows in DeviceOwnerRow, not two
-// devices.
+// place; it never creates a second row. Two owners over time are two rows in
+// DeviceOwnerRow, not two devices.
 type DeviceRow struct {
 	ID uint64 `json:"id" gorm:"primaryKey"`
 
@@ -126,8 +124,7 @@ type DeviceRow struct {
 	DoNotTrack    TriState `json:"doNotTrack" gorm:"type:smallint"`
 
 	// display metrics: they change with window size, zoom and external monitors, so
-	// they are patched in place and must never feed identity (the old layout kept them
-	// in a separate table for the same reason).
+	// they are patched in place and must never feed identity.
 	ScreenWidth  int     `json:"screenWidth"`
 	ScreenHeight int     `json:"screenHeight"`
 	PixelRatio   float64 `json:"pixelRatio"`
@@ -142,8 +139,8 @@ type DeviceRow struct {
 
 func (DeviceRow) TableName() string { return "device" }
 
-// DeviceInstallRow is one (device, app) pair: versions belong to an app on a
-// device, not to the device. Collapsing them into DeviceRow made a mini-program
+// DeviceInstallRow is one (device, app) pair: versions describe an app on a
+// device, not the device. Collapsing them into DeviceRow would let a mini-program
 // report overwrite the App's version and vice versa.
 type DeviceInstallRow struct {
 	ID          uint64         `json:"id" gorm:"primaryKey"`

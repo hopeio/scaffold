@@ -162,3 +162,26 @@ func TestApplyRefusesUploadWithoutIdentity(t *testing.T) {
 		t.Fatalf("want ErrNoIdentity, got %v", err)
 	}
 }
+
+func TestUploadEmptyMeansNothingReported(t *testing.T) {
+	one := "1"
+	cases := []struct {
+		name string
+		u    *Upload
+		want bool
+	}{
+		{"nil upload", nil, true},
+		{"zero upload", &Upload{}, true},
+		{"unknown platform only", &Upload{Platform: DeviceOSUnknown}, true},
+		{"platform", &Upload{Platform: DeviceOSAndroid}, false},
+		{"channel", &Upload{Channel: AppChannelWeb}, false},
+		{"extension key", &Upload{Ext: map[string]string{"a": "1"}}, false},
+		{"empty domain still counts as reported", &Upload{Hardware: &HardwarePatch{}}, false},
+		{"identifier", &Upload{Ident: &IdentPatch{DID: &one}}, false},
+	}
+	for _, c := range cases {
+		if got := c.u.Empty(); got != c.want {
+			t.Errorf("%s: Empty() = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

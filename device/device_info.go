@@ -505,8 +505,8 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 //   - Location (HeaderGeoLocation): lng;lat;area. The wire name is historical:
 //     the standard Location header is a redirect header, see gox net/http.
 //   - Device-Dynamic-Info: networkType;ramAvailMB;diskFreeB (missing segments
-//     are left empty). It aggregates the volatile snapshot that previously
-//     lived in the separate Network-Type / Ram-Avail / Disk-Free headers.
+//     are left empty). One header carries the whole volatile snapshot, so a
+//     request does not pay for three separate ones.
 const (
 	HeaderDeviceId          = "Device-Id"     // stable device identifier reported by the client (DID or a platform id); it is a heuristic key, not a credential
 	HeaderPlatformInfo      = "Platform-Info" // platform;channel;version (OS version)
@@ -708,7 +708,7 @@ type DeviceOSInfo struct {
 }
 
 // DeviceHostInfo is the relatively stable host profile (locale / language / capacity).
-// Volatile fields such as available RAM / free disk live in UserDevice.DeviceLiveInfo and must
+// Volatile fields such as available RAM / free disk live in DeviceLiveInfo and must
 // not be used as a device fingerprint.
 type DeviceHostInfo struct {
 	Locale       string `json:"locale" gorm:"size:64"`
@@ -742,7 +742,7 @@ type DeviceLiveInfo struct {
 }
 
 // DeviceNetworkInfo is the relatively stable carrier / SIM profile.
-// Volatile session-side fields (IP/network-type/geo) live in UserDevice.DeviceLiveInfo.
+// Volatile session-side fields (IP/network-type/geo) live in DeviceLiveInfo.
 type DeviceNetworkInfo struct {
 	Carrier string `json:"carrier" gorm:"size:64"`
 	ICCID   string `json:"iccid" gorm:"size:32"`

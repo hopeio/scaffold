@@ -75,8 +75,8 @@ type HostPatch struct {
 type NetworkPatch struct{ Carrier, ICCID, IMSI *string }
 
 // ScreenPatch carries the display metrics from the live snapshot. They are the one
-// part of the live data worth persisting, and they belong to the device row: the
-// old layout kept them in their own table precisely so they could never feed a digest.
+// part of the live data worth persisting, and they belong to the device row: they
+// move with window size, zoom and external monitors, so they must never feed identity.
 type ScreenPatch struct {
 	Width, Height *int
 	PixelRatio    *float64
@@ -104,6 +104,32 @@ type Upload struct {
 	Web         *WebPatch
 	Screen      *ScreenPatch
 	Ext         map[string]string
+}
+
+// Empty reports whether the upload carries nothing usable at all: no domain, no
+// dimension, no extension key. Callers should reject such a report instead of
+// creating a row whose only recorded fact is that something asked.
+//
+// An unknown OS counts as nothing: clients send the zero enum when the platform
+// could not be resolved, and that alone should not mint a device.
+func (u *Upload) Empty() bool {
+	if u == nil {
+		return true
+	}
+	if u.Platform != DeviceOSUnspecified && u.Platform != DeviceOSUnknown {
+		return false
+	}
+	if u.Channel != AppChannelUnspecified || u.FormFactor != FormFactorUnspecified ||
+		u.RuntimeHost != RuntimeHostUnspecified {
+		return false
+	}
+	if len(u.Ext) > 0 {
+		return false
+	}
+	// Each domain is checked on its own: putting these pointers into an interface
+	// would compare a typed nil, which is not nil, and call every empty upload usable.
+	return u.Ident == nil && u.App == nil && u.Hardware == nil && u.OS == nil &&
+		u.Host == nil && u.Network == nil && u.Web == nil && u.Screen == nil
 }
 
 // put marks "reported, write it even if empty" — the revocable-identifier class.
@@ -160,8 +186,8 @@ var identityOrder = []struct {
 // CanonicalIdentity picks the device identity for an upload.
 //
 // It returns "" when nothing usable was reported. Callers must then refuse to
-// write identity rather than fall back to a digest of the profile: a profile
-// digest is exactly the old bug (switch language, get a new device), and an empty
+// write identity rather than fall back to a digest of the profile: a digest makes a
+// language switch or an app upgrade look like a new device, and an empty
 // key would collide with every other unknown device on the unique index.
 func CanonicalIdentity(p *IdentPatch) (string, KeyKind) {
 	if p == nil {
@@ -300,9 +326,9 @@ type DeviceIdentifierRow struct {
 
 func (DeviceIdentifierRow) TableName() string { return "device_identifier" }
 
-// DeviceChangeRow is the attribute audit trail: what a device's column used to
-// be. Diff-only, not snapshots — a snapshot per report is how the content-
-// addressed tables grew without bound.
+// DeviceChangeRow is the attribute audit trail: which column changed from what to
+// what. Diff-only, never snapshots — a full snapshot per report grows without bound
+// while a real change touches a handful of columns.
 //
 // The comparison is string-normalised: this log is for humans, so a cosmetic
 // formatting difference is harmless, while a wrong value would hide real changes.
@@ -326,9 +352,9 @@ func normVal(v any) string {
 	return fmt.Sprintf("%v", v)
 }
 
-// ErrNoIdentity means the upload had no usable id at all. Callers must skip the v2
-// write rather than invent a key: the previous behaviour (digest the whole profile)
-// is what minted a new device every time the user switched language.
+// ErrNoIdentity means the upload had no usable id at all. Callers must skip the
+// write rather than invent a key: digesting the whole profile is what used to mint
+// a new device every time the user switched language.
 var ErrNoIdentity = errors.New("device: upload carries no usable identity")
 
 type identPair struct {
@@ -384,9 +410,10 @@ func BindOwnerByKey(db *gorm.DB, key string, userID uint64, source string, now t
 	return BindOwner(db, dev.ID, userID, source, now)
 }
 
-// LoadDevice restores the value-model profile for a reported key in one read, the
-// way the old layout needed a master row plus one lookup per domain. Requests carry
-// only the compact headers, so anything that wants the stored profile comes here.
+// LoadDevice restores the value-model profile for a reported key: the device row
+// plus three small lookups (identifiers, the newest install, the live owner).
+// Requests carry only the compact headers, so anything that wants the stored
+// profile comes here.
 // The most recently seen install supplies the app domain: the profile is about the
 // device as it was last reported, and a per-app answer would need a question.
 func LoadDevice(db *gorm.DB, key string) (*Device, error) {
@@ -497,33 +524,36 @@ func LoadDevice(db *gorm.DB, key string) (*Device, error) {
 	return info, nil
 }
 
-// Apply writes one report into the device tables and returns the device id.
+// Apply writes one report into the device tables and returns the resolved device
+// row, so the caller gets the key that was actually persisted: merging by an older
+// identifier keeps that row's canonical_key, which is not necessarily the one this
+// upload would have picked.
 //
 // Resolution order is deliberate: exact canonical_key hit, else merge via any
 // identifier the device previously registered (a reset advertising id, a
 // reinstalled DID on the same hardware), else a new device. Missing device rows are
 // inserted whole; existing ones are patched column-by-column with only what this
 // upload actually reported, and every genuinely changed column is logged.
-func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
+func Apply(db *gorm.DB, u *Upload, now time.Time) (DeviceRow, error) {
 	// Identity first, before anything else: an empty key on the unique index would
 	// make every "identity unknown" upload collide into one shared device row, so
 	// this must not depend on the rest of the arguments being well-formed.
 	if u == nil {
-		return 0, gorm.ErrInvalidData
+		return DeviceRow{}, gorm.ErrInvalidData
 	}
 	key, kind := CanonicalIdentity(u.Ident)
 	if key == "" {
-		return 0, ErrNoIdentity
+		return DeviceRow{}, ErrNoIdentity
 	}
 	if db == nil {
-		return 0, gorm.ErrInvalidData
+		return DeviceRow{}, gorm.ErrInvalidData
 	}
 	pairs := identPairs(u.Ident)
 
 	var dev DeviceRow
 	if err := db.Where("canonical_key = ?", key).First(&dev).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, err
+			return DeviceRow{}, err
 		}
 		dev = DeviceRow{}
 	}
@@ -548,15 +578,15 @@ func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 			row[k] = v
 		}
 		if err := db.Table("device").Create(row).Error; err != nil {
-			return 0, err
+			return DeviceRow{}, err
 		}
 		if err := db.Where("canonical_key = ?", key).First(&dev).Error; err != nil {
-			return 0, err
+			return DeviceRow{}, err
 		}
 	} else {
 		old := map[string]any{}
 		if err := db.Table("device").Where("id = ?", dev.ID).Take(&old).Error; err != nil {
-			return 0, err
+			return DeviceRow{}, err
 		}
 		if ch := diffColumns(old, want); len(ch) > 0 {
 			for i := range ch {
@@ -566,7 +596,7 @@ func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 			}
 		}
 		if err := db.Model(&DeviceRow{}).Where("id = ?", dev.ID).Updates(want).Error; err != nil {
-			return 0, err
+			return DeviceRow{}, err
 		}
 	}
 
@@ -581,7 +611,7 @@ func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 		case err == nil && ex.DeviceID == dev.ID:
 			if e := db.Model(&DeviceIdentifierRow{}).Where("id = ?", ex.ID).
 				Update("last_seen_at", now).Error; e != nil {
-				return 0, e
+				return DeviceRow{}, e
 			}
 		case err == nil:
 			// Owned by another device: leave it alone, do not merge on this basis.
@@ -589,10 +619,10 @@ func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 			if e := db.Create(&DeviceIdentifierRow{
 				DeviceID: dev.ID, Kind: p.kind, Value: p.value, FirstSeenAt: now, LastSeenAt: now,
 			}).Error; e != nil {
-				return 0, e
+				return DeviceRow{}, e
 			}
 		default:
-			return 0, err
+			return DeviceRow{}, err
 		}
 	}
 
@@ -608,15 +638,15 @@ func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 			cols["device_id"] = dev.ID
 			cols["first_seen_at"] = now
 			if err := db.Table("device_install").Create(cols).Error; err != nil {
-				return 0, err
+				return DeviceRow{}, err
 			}
 		} else if q.Error != nil {
-			return 0, q.Error
+			return DeviceRow{}, q.Error
 		} else if err := db.Model(&DeviceInstallRow{}).Where("id = ?", ex.ID).Updates(cols).Error; err != nil {
-			return 0, err
+			return DeviceRow{}, err
 		}
 	}
-	return dev.ID, nil
+	return dev, nil
 }
 
 // mergeByIdentifier resolves a device that already knows one of these ids. When
