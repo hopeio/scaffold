@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	httpx "github.com/hopeio/gox/net/http"
 )
@@ -509,10 +508,10 @@ func (t TriState) IsSet() bool   { return t == TriTrue || t == TriFalse }
 //     are left empty). It aggregates the volatile snapshot that previously
 //     lived in the separate Network-Type / Ram-Avail / Disk-Free headers.
 const (
-	HeaderDeviceInfoMd5     = "Device-Info-Md5" // content-addressed device key (Device.StableMD5)
-	HeaderPlatformInfo      = "Platform-Info"   // platform;channel;version (OS version)
-	HeaderAppInfo           = "App-Info"        // appCode;appVersion
-	HeaderGeoLocation       = "Location"        // lng;lat;area
+	HeaderDeviceId          = "Device-Id"     // stable device identifier reported by the client (DID or a platform id); it is a heuristic key, not a credential
+	HeaderPlatformInfo      = "Platform-Info" // platform;channel;version (OS version)
+	HeaderAppInfo           = "App-Info"      // appCode;appVersion
+	HeaderGeoLocation       = "Location"      // lng;lat;area
 	HeaderDeviceDynamicInfo = "Device-Dynamic-Info"
 )
 
@@ -611,14 +610,16 @@ func (t *NetworkType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Device 客户端上报的完整设备画像：稳定域（app/hardware/ident/os/host/network/web）
-// 加 DeviceLite（身份 + 实时快照）。它只活在内存与上报链路里，不落库：稳定域按内容
-// 寻址存进各自的 device_* 分表，主表 user_device 只留引用（见 UserDevice）。
-// 实时快照经 DeviceLite.DeviceLiveInfo 带进来：不落库、不参与任何内容寻址 MD5。
+// Device is the full device profile reported by a client: the stable domains
+// (app/hardware/ident/os/host/network/web) plus DeviceLite (identity + live
+// snapshot). It is the in-memory/upload shape; persistence is one device row plus
+// one device_install row per app (see DeviceRow), written by Apply with patch
+// semantics. The live snapshot travels via DeviceLite.DeviceLiveInfo and is not
+// stored except for the display metrics, which are patched onto the device row.
 type Device struct {
 	UserID uint64 `json:"userId" gorm:"index"`
 
-	DeviceLite // 身份（Md5/Platform/Channel/FormFactor/RuntimeHost）+ 实时快照（DeviceLiveInfo）
+	DeviceLite // identity (DeviceId/Platform/Channel/FormFactor/RuntimeHost) + live snapshot
 
 	App      DeviceAppInfo      `json:"app" gorm:"embedded;embeddedPrefix:app_"`
 	Hardware DeviceHardwareInfo `json:"hardware" gorm:"embedded;embeddedPrefix:hw_"`
@@ -630,30 +631,6 @@ type Device struct {
 
 	Ext map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
 }
-
-// UserDevice 是 user_device 主表的行：归属某个用户，只保存稳定身份
-// （md5/platform/channel）与各稳定域分表的内容寻址主键，不保存域明细与实时快照。
-// ID 是自增代理主键；Md5 是客户端 Device-Info-Md5，业务唯一键。
-type UserDevice struct {
-	ID          uint64            `json:"id" gorm:"primaryKey"`
-	UserID      uint64            `json:"userId" gorm:"index"`
-	Md5         string            `json:"md5" gorm:"uniqueIndex;size:32"`
-	Platform    DeviceOS          `json:"platform" gorm:"column:platform;type:smallint"`
-	Channel     AppChannel        `json:"channel" gorm:"column:client_kind;type:smallint"`
-	FormFactor  FormFactor        `json:"formFactor" gorm:"column:form_factor;type:smallint"`
-	RuntimeHost RuntimeHost       `json:"runtimeHost" gorm:"column:runtime_host;type:smallint"`
-	AppID       string            `json:"appId" gorm:"size:32;index"`
-	HardwareID  string            `json:"hardwareId" gorm:"size:32;index"`
-	IdentID     string            `json:"identId" gorm:"size:32;index"`
-	OsID        string            `json:"osId" gorm:"size:32;index"`
-	HostID      string            `json:"hostId" gorm:"size:32;index"`
-	NetworkID   string            `json:"networkId" gorm:"size:32;index"`
-	WebID       string            `json:"webId" gorm:"size:32;index"`
-	Ext         map[string]string `json:"ext,omitempty" gorm:"serializer:json"`
-	LastSeenAt  time.Time         `json:"lastSeenAt" gorm:"index"`
-}
-
-func (UserDevice) TableName() string { return "user_device" }
 
 // DeviceAppInfo 应用 / 包信息。
 type DeviceAppInfo struct {
@@ -789,10 +766,10 @@ type DeviceWebInfo struct {
 
 // DeviceLite is a lightweight per-request device snapshot (isomorphic to
 // user.AccessDevice). It is built from Platform-Info / App-Info / Location /
-// Device-Info-Md5 / UA / XFF / Device-Dynamic-Info headers without reconstructing
-// a full UserDevice. The volatile fields are embedded via DeviceLiveInfo.
+// Device-Id / UA / XFF / Device-Dynamic-Info headers without reconstructing
+// a full Device. The volatile fields are embedded via DeviceLiveInfo.
 type DeviceLite struct {
-	Md5            string      `json:"md5" gorm:"uniqueIndex;size:32"`
+	DeviceId       string      `json:"deviceId" gorm:"size:64"`
 	Platform       DeviceOS    `json:"platform" gorm:"type:smallint"`
 	Channel        AppChannel  `json:"channel" gorm:"type:smallint"`
 	FormFactor     FormFactor  `json:"formFactor" gorm:"type:smallint"`
@@ -805,7 +782,7 @@ type DeviceLite struct {
 
 // Empty 是否全空。
 func (l DeviceLite) Empty() bool {
-	return l.Md5 == "" &&
+	return l.DeviceId == "" &&
 		l.Platform == DeviceOSUnspecified && l.Channel == AppChannelUnspecified &&
 		l.Version == "" &&
 		l.AppCode == "" && l.AppVersion == "" &&
@@ -823,8 +800,8 @@ func (d *Device) Lite() DeviceLite {
 	}
 	d.Normalize()
 	lite := d.DeviceLite
-	if lite.Md5 == "" {
-		lite.Md5 = d.PrimaryDeviceNo()
+	if lite.DeviceId == "" {
+		lite.DeviceId = d.PrimaryDeviceNo()
 	}
 	if lite.Version == "" {
 		lite.Version = d.OS.Version
@@ -948,7 +925,7 @@ func firstNonEmpty(ss ...string) string {
 // Platform-Info = platform;channel;version
 // App-Info = appCode;appVersion
 // Location = lng;lat;area
-// 另含 Device-Info-Md5 / User-Agent / X-Forwarded-For。
+// 另含 Device-Id / User-Agent / X-Forwarded-For。
 func LiteFromHeader(header http.Header) DeviceLite {
 	var lite DeviceLite
 	if header == nil {
@@ -995,7 +972,7 @@ func LiteFromHeader(header http.Header) DeviceLite {
 			}
 		}
 	}
-	lite.Md5 = strings.TrimSpace(header.Get(HeaderDeviceInfoMd5))
+	lite.DeviceId = strings.TrimSpace(header.Get(HeaderDeviceId))
 	return lite
 }
 

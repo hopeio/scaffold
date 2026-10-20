@@ -74,6 +74,14 @@ type HostPatch struct {
 
 type NetworkPatch struct{ Carrier, ICCID, IMSI *string }
 
+// ScreenPatch carries the display metrics from the live snapshot. They are the one
+// part of the live data worth persisting, and they belong to the device row: the
+// old layout kept them in their own table precisely so they could never feed a digest.
+type ScreenPatch struct {
+	Width, Height *int
+	PixelRatio    *float64
+}
+
 type WebPatch struct {
 	UserAgent, Browser, BrowserVersion, Engine, EngineVersion, Vendor *string
 	MaxTouchPoints, ColorDepth                                        *int
@@ -94,6 +102,7 @@ type Upload struct {
 	Host        *HostPatch
 	Network     *NetworkPatch
 	Web         *WebPatch
+	Screen      *ScreenPatch
 	Ext         map[string]string
 }
 
@@ -248,6 +257,11 @@ func (u *Upload) DeviceColumns() map[string]any {
 		putTri(m, "cookie_enabled", w.CookieEnabled)
 		putTri(m, "do_not_track", w.DoNotTrack)
 	}
+	if s := u.Screen; s != nil {
+		putNonZero(m, "screen_width", s.Width)
+		putNonZero(m, "screen_height", s.Height)
+		putNonZero(m, "pixel_ratio", s.PixelRatio)
+	}
 	if len(u.Ext) > 0 {
 		m["ext"] = u.Ext
 	}
@@ -351,14 +365,14 @@ func extJSON(m map[string]string) (string, bool) {
 	return string(b), true
 }
 
-// ApplyV2 writes one report into the v2 tables and returns the device id.
+// Apply writes one report into the device tables and returns the device id.
 //
 // Resolution order is deliberate: exact canonical_key hit, else merge via any
 // identifier the device previously registered (a reset advertising id, a
 // reinstalled DID on the same hardware), else a new device. Missing device rows are
 // inserted whole; existing ones are patched column-by-column with only what this
 // upload actually reported, and every genuinely changed column is logged.
-func ApplyV2(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
+func Apply(db *gorm.DB, u *Upload, now time.Time) (uint64, error) {
 	// Identity first, before anything else: an empty key on the unique index would
 	// make every "identity unknown" upload collide into one shared device row, so
 	// this must not depend on the rest of the arguments being well-formed.

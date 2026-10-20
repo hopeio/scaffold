@@ -155,10 +155,10 @@ func TestExtJSONEmptyNotWritten(t *testing.T) {
 	}
 }
 
-func TestApplyV2RefusesUploadWithoutIdentity(t *testing.T) {
+func TestApplyRefusesUploadWithoutIdentity(t *testing.T) {
 	// Identity is validated before anything else: writing with an empty key would make
 	// every "identity unknown" upload collide into one shared device row.
-	if _, err := ApplyV2(nil, &Upload{Ident: &IdentPatch{}}, time.Time{}); err != ErrNoIdentity {
+	if _, err := Apply(nil, &Upload{Ident: &IdentPatch{}}, time.Time{}); err != ErrNoIdentity {
 		t.Fatalf("want ErrNoIdentity, got %v", err)
 	}
 }

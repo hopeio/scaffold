@@ -19,7 +19,7 @@ func TestLiteFromHeader(t *testing.T) {
 	h.Set("Location", "121.4;31.2;上海")
 	h.Set("User-Agent", "app/1.0")
 	h.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
-	h.Set("Device-Info-Md5", "abc")
+	h.Set("Device-Id", "abc")
 	h.Set(HeaderDeviceDynamicInfo, "wifi")
 
 	lite := LiteFromHeader(h)
@@ -38,8 +38,8 @@ func TestLiteFromHeader(t *testing.T) {
 	if lite.IP == nil || lite.IP.String() != "10.0.0.1" {
 		t.Fatalf("ip: %v", lite.IP)
 	}
-	if lite.Md5 != "abc" {
-		t.Fatalf("md5: %q", lite.Md5)
+	if lite.DeviceId != "abc" {
+		t.Fatalf("deviceId: %q", lite.DeviceId)
 	}
 	if lite.NetworkType != NetworkTypeWifi {
 		t.Fatalf("netType: %q", lite.NetworkType)
