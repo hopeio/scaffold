@@ -365,6 +365,138 @@ func extJSON(m map[string]string) (string, bool) {
 	return string(b), true
 }
 
+// BindOwnerByKey binds the device behind a reported key (the Device-Id header value)
+// to a user. Unknown key is a no-op rather than an error: the device row is created
+// by the first report that carries an identity, and login may well happen before any
+// report has landed.
+func BindOwnerByKey(db *gorm.DB, key string, userID uint64, source string, now time.Time) error {
+	if key == "" || userID == 0 {
+		return nil
+	}
+	var dev DeviceRow
+	err := db.Where("canonical_key = ?", key).First(&dev).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return BindOwner(db, dev.ID, userID, source, now)
+}
+
+// LoadDevice restores the value-model profile for a reported key in one read, the
+// way the old layout needed a master row plus one lookup per domain. Requests carry
+// only the compact headers, so anything that wants the stored profile comes here.
+// The most recently seen install supplies the app domain: the profile is about the
+// device as it was last reported, and a per-app answer would need a question.
+func LoadDevice(db *gorm.DB, key string) (*Device, error) {
+	if key == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+	var row DeviceRow
+	if err := db.Where("canonical_key = ?", key).First(&row).Error; err != nil {
+		return nil, err
+	}
+	info := &Device{
+		DeviceLite: DeviceLite{
+			DeviceId:    row.CanonicalKey,
+			Platform:    row.Platform,
+			Channel:     row.Channel,
+			FormFactor:  row.FormFactor,
+			RuntimeHost: row.RuntimeHost,
+			Version:     row.OSVersion,
+			// DeviceLiveInfo is embedded in DeviceLite, so the display metrics go in
+			// through it rather than as a second field of Device.
+			DeviceLiveInfo: DeviceLiveInfo{
+				ScreenWidth: row.ScreenWidth, ScreenHeight: row.ScreenHeight, PixelRatio: row.PixelRatio,
+			},
+		},
+		Hardware: DeviceHardwareInfo{
+			Manufacturer: row.Manufacturer, Brand: row.Brand, Model: row.Model, ModelName: row.ModelName,
+			DeviceName: row.DeviceName, Product: row.Product, Board: row.Board, Hardware: row.Hardware,
+			Chipset: row.Chipset, Fingerprint: row.Fingerprint, Bootloader: row.Bootloader,
+			DisplayID: row.DisplayID, SerialNo: row.SerialNo, CPUVendor: row.CPUVendor, CPUModel: row.CPUModel,
+			CPUCores: row.CPUCores, GPUVendor: row.GPUVendor, GPUModel: row.GPUModel, GPURenderer: row.GPURenderer,
+			IsPhysical: row.IsPhysical, IsLowRam: row.IsLowRam,
+		},
+		OS: DeviceOSInfo{
+			Name: row.OSName, Version: row.OSVersion, Build: row.OSBuild, Codename: row.OSCodename,
+			SDKInt: row.OSSDKInt, SecurityPatch: row.OSSecurityPatch, Edition: row.OSEdition,
+			KernelVersion: row.OSKernelVersion, Arch: row.OSArch, OSSkin: row.OSSkin, OSSkinVersion: row.OSSkinVersion,
+		},
+		Host: DeviceHostInfo{
+			Locale: row.Locale, Language: row.Language, Languages: row.Languages, Timezone: row.Timezone,
+			Hostname: row.Hostname, CPUCount: row.CPUCount, CPUFrequency: row.CPUFrequency,
+			RamMB: row.RamMB, DiskTotalB: row.DiskTotalByte,
+		},
+		Network: DeviceNetworkInfo{Carrier: row.Carrier, ICCID: row.ICCID, IMSI: row.IMSI},
+		Web: DeviceWebInfo{
+			UserAgent: row.UserAgent, Browser: row.Browser, BrowserVersion: row.BrowserVer,
+			Engine: row.Engine, EngineVersion: row.EngineVer, Vendor: row.WebVendor,
+			MaxTouchPts: row.MaxTouchPts, ColorDepth: row.ColorDepth, DeviceMemoryG: row.DeviceMemoryG,
+			CookieEnabled: row.CookieEnabled, DoNotTrack: row.DoNotTrack,
+		},
+	}
+	// Identity fields are not stored on the device row: the key is derived from them,
+	// and a copy here would be a second answer to which ids a device has.
+	var ids []DeviceIdentifierRow
+	if err := db.Where("device_id = ?", row.ID).Find(&ids).Error; err != nil {
+		return nil, err
+	}
+	for _, i := range ids {
+		switch i.Kind {
+		case KeyKindDID:
+			info.ID.DID = i.Value
+		case KeyKindIDFV:
+			info.ID.IDFV = i.Value
+		case KeyKindAndroidID:
+			info.ID.AndroidID = i.Value
+		case KeyKindOAID:
+			info.ID.OAID = i.Value
+		case KeyKindGAID:
+			info.ID.GAID = i.Value
+		case KeyKindAAID:
+			info.ID.AAID = i.Value
+		case KeyKindVAID:
+			info.ID.VAID = i.Value
+		case KeyKindCAID:
+			info.ID.CAID = i.Value
+		case KeyKindOpenUDID:
+			info.ID.OpenUDID = i.Value
+		case KeyKindGUID:
+			info.ID.GUID = i.Value
+		case KeyKindUUID:
+			info.ID.UUID = i.Value
+		}
+	}
+	var ins []DeviceInstallRow
+	if err := db.Where("device_id = ?", row.ID).Order("last_seen_at desc").Limit(1).Find(&ins).Error; err != nil {
+		return nil, err
+	}
+	if len(ins) > 0 {
+		info.App = DeviceAppInfo{
+			Code: ins[0].AppCode, Name: ins[0].AppName, Version: ins[0].Version, Build: ins[0].Build,
+			PackageName: ins[0].PackageName, BundleID: ins[0].BundleID, Channel: ins[0].Channel,
+			ServiceName: ins[0].ServiceName,
+		}
+		info.DeviceLite.AppCode = ins[0].AppCode
+		info.DeviceLite.AppVersion = ins[0].Version
+	}
+	// The live owner, if there is one: ownership is an interval, so it is not a column
+	// on the device row.
+	var owner DeviceOwnerRow
+	err := db.Where("device_id = ? AND unbound_at IS NULL", row.ID).Order("bound_at desc").First(&owner).Error
+	switch {
+	case err == nil:
+		info.UserID = owner.UserID
+	case errors.Is(err, gorm.ErrRecordNotFound):
+	default:
+		return nil, err
+	}
+	info.Normalize()
+	return info, nil
+}
+
 // Apply writes one report into the device tables and returns the device id.
 //
 // Resolution order is deliberate: exact canonical_key hit, else merge via any
