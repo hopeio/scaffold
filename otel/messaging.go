@@ -10,7 +10,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// The helpers below are intended for clients without official hook/plugin support (e.g. NSQ, MQTT).
+// The helpers below are intended for clients without official hook/plugin support (e.g. NSQ, MQTT),
+// and for background work that owns no request span (StartJobSpan / TraceJob).
 // Wrap calls at the business handler or publish site rather than modifying the initialize layer.
 
 // StartClientSpan starts an OTel client-kind span with the given name and attributes.
@@ -72,6 +73,33 @@ func TraceClient(ctx context.Context, spanName string, attrs []attribute.KeyValu
 // TraceConsumer wraps fn in a consumer span, ending it with the returned error.
 func TraceConsumer(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
 	ctx, span := StartConsumerSpan(ctx, spanName, attrs...)
+	err := fn(ctx)
+	EndSpan(span, err)
+	return err
+}
+
+// StartJobSpan opens the span of one iteration of background work — a ticker
+// round, a cron sweep, a deferred write. Such paths have no inbound request to
+// carry a trace, so without this call their DB/Redis spans are either orphans
+// (dropped by SkipOrphanTracerProvider) or invisible.
+//
+// The caller owns End; inside a select loop prefer TraceJob, whose scope is one
+// round instead of the goroutine.
+func StartJobSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return otel.Tracer(ScopeName).Start(ctx, spanName,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attrs...),
+	)
+}
+
+// TraceJob runs one job iteration inside a span named spanName, ending it with the
+// returned error. Unlike the request-shaped helpers, an error here is reported but
+// not swallowed: the caller decides whether a failed round also retries.
+func TraceJob(ctx context.Context, spanName string, attrs []attribute.KeyValue, fn func(context.Context) error) error {
+	ctx, span := StartJobSpan(ctx, spanName, attrs...)
 	err := fn(ctx)
 	EndSpan(span, err)
 	return err

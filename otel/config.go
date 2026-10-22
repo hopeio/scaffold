@@ -11,7 +11,15 @@ import (
 // is how it is disabled — there is no separate on/off flag. This avoids a bootstrap-order
 // dependency: a flag whose "auto" state depends on whether SetupOTelSDK has run would
 // silently no-op at injection time (before the SDK exists), dropping DB/Redis/S3 spans.
-type Config struct{}
+type Config struct {
+	// KeepOrphanSpans also records instrumentation spans that carry no parent
+	// (SkipOrphanTracerProvider is not applied). Off by default: a lone
+	// "redis.dial" or "redis.pipeline set" cannot be attributed to any request or
+	// job, and every one of them becomes a whole trace of its own. Background
+	// work should open its own span (StartJobSpan) so these attach as children;
+	// flip this only when diagnosing who issues the untraced calls.
+	KeepOrphanSpans bool
+}
 
 // SDKConfig configures OpenTelemetry SDK bootstrap (trace sampling, etc.).
 type SDKConfig struct {

@@ -35,7 +35,13 @@ func (p *GORMPlugin) Use(db *gorm.DB) error {
 	if err := slow.Init(); err != nil {
 		return err
 	}
-	return db.Use(gormx.NewOTelPlugin(gormx.WithCustomMetrics(slow)))
+	opts := []gormx.Option{gormx.WithCustomMetrics(slow)}
+	if !p.KeepOrphanSpans {
+		// SQL issued outside any span (ticker jobs, startup loads, pool
+		// housekeeping) would each become a trace of one span.
+		opts = append(opts, gormx.WithTracerProvider(SkipOrphanGlobalProvider()))
+	}
+	return db.Use(gormx.NewOTelPlugin(opts...))
 }
 
 type SlowSQLMetric struct {

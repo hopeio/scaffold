@@ -32,7 +32,13 @@ func (p *RedisPlugin) Instrument(client redis.UniversalClient) error {
 		return nil
 	}
 	if p.Tracing {
-		if err := redisotel.InstrumentTracing(client); err != nil {
+		opts := make([]redisotel.TracingOption, 0, 1)
+		if !p.KeepOrphanSpans {
+			// Pool dials and background reconnects carry no request ctx, so without
+			// this they each open a one-span trace.
+			opts = append(opts, redisotel.WithTracerProvider(SkipOrphanGlobalProvider()))
+		}
+		if err := redisotel.InstrumentTracing(client, opts...); err != nil {
 			return err
 		}
 	}
