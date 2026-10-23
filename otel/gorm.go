@@ -45,10 +45,10 @@ func (p *GORMPlugin) Use(db *gorm.DB) error {
 }
 
 type SlowSQLMetric struct {
-	ThresholdMs        float64
-	RecordAllDuration  bool
-	counter            metric.Int64Counter
-	histogram          metric.Float64Histogram
+	ThresholdMs          float64
+	RecordAllDuration    bool
+	counter              metric.Int64Counter
+	histogram            metric.Float64Histogram
 	allDurationHistogram metric.Float64Histogram
 }
 
