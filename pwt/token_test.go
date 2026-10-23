@@ -1,17 +1,17 @@
-package pwd_test
+package pwt_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hopeio/scaffold/pwd"
+	"github.com/hopeio/scaffold/pwt"
 )
 
 func TestEncodeDecodeSegment(t *testing.T) {
 	in := []byte{0, 1, 2, 250, 255}
-	enc := pwd.EncodeSegment(in)
-	out, err := pwd.DecodeSegment(enc)
+	enc := pwt.EncodeSegment(in)
+	out, err := pwt.DecodeSegment(enc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestEncodeDecodeSegment(t *testing.T) {
 func TestHMACSigningStringMatchesJWTStyle(t *testing.T) {
 	key := []byte("test-secret-key-32bytes-minimum!!")
 	method := jwt.SigningMethodHS256
-	sstr := pwd.EncodeSegment([]byte("hdr")) + "." + pwd.EncodeSegment([]byte("body"))
+	sstr := pwt.EncodeSegment([]byte("hdr")) + "." + pwt.EncodeSegment([]byte("body"))
 	sig, err := method.Sign(sstr, key)
 	if err != nil {
 		t.Fatal(err)
@@ -31,8 +31,8 @@ func TestHMACSigningStringMatchesJWTStyle(t *testing.T) {
 	if err := method.Verify(sstr, sig, key); err != nil {
 		t.Fatal(err)
 	}
-	tok := sstr + "." + pwd.EncodeSegment(sig)
-	if pwd.EncodeSegment(sig) != tok[len(sstr)+1:] {
+	tok := sstr + "." + pwt.EncodeSegment(sig)
+	if pwt.EncodeSegment(sig) != tok[len(sstr)+1:] {
 		t.Fatal("segment join mismatch")
 	}
 }

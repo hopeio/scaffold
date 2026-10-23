@@ -1,11 +1,11 @@
-// Package tokenrevoke 计算 JWT 吊销名单的键与存活时间。
+// 本文件计算 JWT 吊销名单的键与存活时间（不是第二个包文档）。
 //
 // JWT 本身无状态，登出后签名依然有效。这里按签名段登记一条吊销记录，
 // 存活到原 token 过期为止——之后 token 自然失效，记录留着也没用。
 // 全端踢下线的主路径是删 Redis LoginUser 会话，本包只服务「登出当前票」场景。
 //
 // 逻辑不依赖 redis 与全局配置，可单独测试。
-package pwd
+package pwt
 
 import (
 	"strings"

@@ -3,10 +3,10 @@
  * Licensed under the MIT License that can be found in the LICENSE file.
  */
 
-// Package pwd signs and verifies three-segment tokens whose header and body are
+// Package pwt signs and verifies three-segment tokens whose header and body are
 // protobuf messages, using golang-jwt SigningMethod for the signature segment
 // (same HS256/HS384/HS512 crypto as JWT, protobuf wire instead of JSON).
-package pwd
+package pwt
 
 import (
 	"encoding/base64"
