@@ -1,5 +1,10 @@
 // Package objectthumb turns an original image stored in an object store into a small
-// JPEG rendition for list/grid surfaces, so scrolling never downloads originals.
+// WebP rendition for list/grid surfaces, so scrolling never downloads originals.
+//
+// WebP (lossy, VP8) instead of JPEG: same visual quality at roughly half the bytes, and
+// it keeps alpha - logos and stickers stop getting a white box. Encoding goes through
+// libwebp compiled to WASM (gen2brain/webp), so it runs with CGO_ENABLED=0 and needs no
+// system library; the server image is distroless/static and cannot load libwebp.so.
 //
 // It deliberately owns only the image work plus a two-method Store interface: scanning
 // rows and persisting the resulting key stays with the calling domain, which keeps this
@@ -20,17 +25,24 @@ import (
 	"image/png"
 	"math"
 	"strings"
+
+	"github.com/gen2brain/webp"
 )
 
 const (
 	// DefaultMaxEdge is the long edge of a rendition. Grid cells are ~300 logical pixels,
 	// so 480 covers a 2x screen.
 	DefaultMaxEdge = 480
-	// DefaultQuality is the JPEG quality used for renditions.
-	DefaultQuality = 82
+	// DefaultQuality is the WebP quality used for renditions. WebP q80 is visually
+	// comparable to JPEG q85 at a fraction of the size.
+	DefaultQuality = 80
 	// MaxSourceBytes caps the bytes read for one source image; bigger files are reported
 	// as unavailable instead of being pulled into memory.
 	MaxSourceBytes = 20 << 20
+	// ContentType is what callers must write with the rendition object. It also decides
+	// how clients decode it, so it is part of the contract rather than an implementation
+	// detail of the store adapter.
+	ContentType = "image/webp"
 	// UnavailableKey is the sentinel callers persist when a source cannot produce a
 	// rendition (unsupported format, undecodable bytes, or already small enough). Read
 	// paths must treat it as "no thumb" and fall back to the original; persisting it is
@@ -50,16 +62,19 @@ func Supported(mime string) bool {
 	}
 }
 
-// Store is the minimal object-store surface Generate needs.
+// Store is the minimal object-store surface Generate needs. Put receives the content
+// type to persist with the object (see ContentType).
 type Store interface {
 	Get(ctx context.Context, key string) ([]byte, error)
-	Put(ctx context.Context, key string, data []byte) error
+	Put(ctx context.Context, key string, data []byte, contentType string) error
 }
 
 // Result describes one generation attempt.
 type Result struct {
 	// ThumbKey is the stored rendition key; empty when Unavailable.
 	ThumbKey string
+	// ContentType is the MIME type persisted with ThumbKey.
+	ContentType string
 	// Unavailable means "do not retry": persist UnavailableKey and fall back to the
 	// original on read.
 	Unavailable bool
@@ -95,15 +110,15 @@ func Generate(ctx context.Context, store Store, srcKey, mime string, maxEdge int
 	if longestEdge(b.Dx(), b.Dy()) <= maxEdge {
 		return Result{Unavailable: true, Reason: "already small"}, nil
 	}
-	out, err := EncodeJPEG(src, maxEdge, DefaultQuality)
+	out, err := EncodeWebP(src, maxEdge, DefaultQuality)
 	if err != nil {
 		return Result{Unavailable: true, Reason: "encode failed"}, nil
 	}
 	key := ObjectKey(srcKey)
-	if err := store.Put(ctx, key, out); err != nil {
+	if err := store.Put(ctx, key, out, ContentType); err != nil {
 		return Result{}, err
 	}
-	return Result{ThumbKey: key}, nil
+	return Result{ThumbKey: key, ContentType: ContentType}, nil
 }
 
 // ObjectKey derives the rendition key from the source key.
@@ -113,7 +128,7 @@ func Generate(ctx context.Context, store Store, srcKey, mime string, maxEdge int
 // keeps renditions in their own namespace inside the bucket.
 func ObjectKey(srcKey string) string {
 	sum := sha256.Sum256([]byte(srcKey))
-	return "thumb/" + hex.EncodeToString(sum[:16]) + ".jpg"
+	return "thumb/" + hex.EncodeToString(sum[:16]) + ".webp"
 }
 
 // TargetSize scales (w, h) down so the long edge equals maxEdge at most. Both sides are
@@ -138,11 +153,12 @@ func TargetSize(w, h, maxEdge int) (int, int) {
 	return tw, th
 }
 
-// EncodeJPEG flattens the image onto white and encodes a downscaled JPEG.
+// EncodeWebP downscales the image and encodes a lossy WebP.
 //
-// Flattening first matters for PNG: JPEG has no alpha, so transparent regions would
-// otherwise turn black. It also lets the resize step work on opaque RGBA only.
-func EncodeJPEG(src image.Image, maxEdge, quality int) ([]byte, error) {
+// Alpha is preserved: WebP carries it, so transparent PNGs (logos, stickers) no longer
+// get a white rectangle behind them. The source is copied into RGBA with draw.Src for
+// that reason - draw.Over would blend against an empty (black) destination.
+func EncodeWebP(src image.Image, maxEdge, quality int) ([]byte, error) {
 	sb := src.Bounds()
 	tw, th := TargetSize(sb.Dx(), sb.Dy(), maxEdge)
 	if tw == 0 || th == 0 {
@@ -151,12 +167,11 @@ func EncodeJPEG(src image.Image, maxEdge, quality int) ([]byte, error) {
 	if quality <= 0 {
 		quality = DefaultQuality
 	}
-	flat := image.NewRGBA(image.Rect(0, 0, sb.Dx(), sb.Dy()))
-	draw.Draw(flat, flat.Bounds(), &image.Uniform{C: color.White}, image.Point{}, draw.Src)
-	draw.Draw(flat, flat.Bounds(), src, sb.Min, draw.Over)
-	scaled := resizeBilinear(flat, tw, th)
+	rgba := image.NewRGBA(image.Rect(0, 0, sb.Dx(), sb.Dy()))
+	draw.Draw(rgba, rgba.Bounds(), src, sb.Min, draw.Src)
+	scaled := resizeBilinear(rgba, tw, th)
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, scaled, &jpeg.Options{Quality: quality}); err != nil {
+	if err := webp.Encode(&buf, scaled, webp.Options{Quality: quality, Method: 4}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -173,8 +188,8 @@ func decode(raw []byte, mime string) (image.Image, error) {
 	}
 }
 
-// resizeBilinear scales an opaque RGBA image. The standard library has no scaler; this
-// runs only in background workers, so clarity beats micro-optimisation.
+// resizeBilinear scales an RGBA image, alpha included. The standard library has no
+// scaler; this runs only in background workers, so clarity beats micro-optimisation.
 func resizeBilinear(src *image.RGBA, tw, th int) *image.RGBA {
 	sb := src.Bounds()
 	sw, sh := sb.Dx(), sb.Dy()
@@ -219,7 +234,7 @@ func resizeBilinear(src *image.RGBA, tw, th int) *image.RGBA {
 				R: mix(c00.R, c10.R, c01.R, c11.R),
 				G: mix(c00.G, c10.G, c01.G, c11.G),
 				B: mix(c00.B, c10.B, c01.B, c11.B),
-				A: 255,
+				A: mix(c00.A, c10.A, c01.A, c11.A),
 			})
 		}
 	}
